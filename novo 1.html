@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>VR Shooting Gallery</title>
+    <meta name="description" content="VR Shooting Game for Meta Quest">
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <style>
+        #crosshair {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            border: 2px solid white;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 1000;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        #instructions {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 18px;
+            text-align: center;
+            z-index: 1000;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border-radius: 10px;
+        }
+        #score-display {
+            position: fixed;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 1000;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+    </style>
+</head>
+<body>
+    <div id="crosshair"></div>
+    <div id="instructions">PC: Click to shoot | VR: Point controller and pull trigger</div>
+    <div id="score-display">Score: 0</div>
+
+    <a-scene cursor="rayOrigin: mouse">
+        <!-- Sky -->
+        <a-sky color="#87CEEB"></a-sky>
+
+        <!-- Ground -->
+        <a-plane position="0 0 0" rotation="-90 0 0" width="20" height="20" color="#7BC8A4"></a-plane>
+
+        <!-- Lighting -->
+        <a-light type="ambient" color="#445451"></a-light>
+        <a-light type="point" intensity="2" position="2 4 4"></a-light>
+
+        <!-- Camera with controls -->
+        <a-entity id="camera-rig" position="0 1.6 0">
+            <a-camera look-controls wasd-controls>
+                <!-- Raycaster for PC mouse aiming -->
+                <a-entity 
+                    id="mouse-cursor" 
+                    cursor="rayOrigin: mouse" 
+                    raycaster="objects: .clickable; far: 20">
+                </a-entity>
+                
+                <!-- Gun model for PC (visible when not in VR) -->
+                <a-entity id="pc-gun" position="0.3 -0.3 -0.5" rotation="0 0 0" visible="true">
+                    <!-- Gun barrel -->
+                    <a-cylinder position="0 0 -0.2" rotation="90 0 0" radius="0.02" height="0.4" color="#333"></a-cylinder>
+                    <!-- Gun handle -->
+                    <a-box position="0 -0.05 0" width="0.08" height="0.15" depth="0.1" color="#222"></a-box>
+                    <!-- Gun sight -->
+                    <a-box position="0 0.03 0" width="0.02" height="0.02" depth="0.05" color="#666"></a-box>
+                </a-entity>
+            </a-camera>
+            
+            <!-- VR Controllers -->
+            <a-entity id="leftHand" 
+                      laser-controls="hand: left" 
+                      raycaster="objects: .clickable; far: 10"
+                      oculus-touch-controls="hand: left">
+                <!-- Gun model for left hand -->
+                <a-entity position="0 0 -0.1">
+                    <a-cylinder rotation="90 0 0" radius="0.015" height="0.2" color="#333"></a-cylinder>
+                    <a-box position="0 -0.05 0.05" width="0.05" height="0.08" depth="0.08" color="#222"></a-box>
+                </a-entity>
+            </a-entity>
+            
+            <a-entity id="rightHand" 
+                      laser-controls="hand: right" 
+                      raycaster="objects: .clickable; far: 10"
+                      oculus-touch-controls="hand: right">
+                <!-- Gun model for right hand -->
+                <a-entity position="0 0 -0.1">
+                    <a-cylinder rotation="90 0 0" radius="0.015" height="0.2" color="#333"></a-cylinder>
+                    <a-box position="0 -0.05 0.05" width="0.05" height="0.08" depth="0.08" color="#222"></a-box>
+                </a-entity>
+            </a-entity>
+        </a-entity>
+
+        <!-- Score display in 3D -->
+        <a-text id="scoreText" value="Score: 0" position="0 3.5 -5" align="center" color="#FFF" width="10"></a-text>
+
+        <!-- Back wall -->
+        <a-box position="0 2 -6" width="12" height="5" depth="0.1" color="#8B4513"></a-box>
+
+        <!-- Targets Row 1 -->
+        <a-sphere class="clickable target" position="-3 2 -5.5" radius="0.35" color="#FF0000"></a-sphere>
+        <a-sphere class="clickable target" position="-1.5 2 -5.5" radius="0.35" color="#FF4500"></a-sphere>
+        <a-sphere class="clickable target" position="0 2 -5.5" radius="0.35" color="#00FF00"></a-sphere>
+        <a-sphere class="clickable target" position="1.5 2 -5.5" radius="0.35" color="#0000FF"></a-sphere>
+        <a-sphere class="clickable target" position="3 2 -5.5" radius="0.35" color="#FF00FF"></a-sphere>
+
+        <!-- Targets Row 2 -->
+        <a-sphere class="clickable target" position="-2.25 3 -5.5" radius="0.35" color="#FFFF00"></a-sphere>
+        <a-sphere class="clickable target" position="-0.75 3 -5.5" radius="0.35" color="#00FFFF"></a-sphere>
+        <a-sphere class="clickable target" position="0.75 3 -5.5" radius="0.35" color="#FFA500"></a-sphere>
+        <a-sphere class="clickable target" position="2.25 3 -5.5" radius="0.35" color="#800080"></a-sphere>
+
+        <!-- Side decorations -->
+        <a-cylinder position="-5 1 -3" radius="0.2" height="2" color="#654321"></a-cylinder>
+        <a-cone position="-5 2.2 -3" radius-bottom="0.4" radius-top="0.05" height="0.6" color="#228B22"></a-cone>
+        
+        <a-cylinder position="5 1 -3" radius="0.2" height="2" color="#654321"></a-cylinder>
+        <a-cone position="5 2.2 -3" radius-bottom="0.4" radius-top="0.05" height="0.6" color="#228B22"></a-cone>
+    </a-scene>
+
+    <script>
+        let score = 0;
+        let isVR = false;
+
+        // Wait for scene to load
+        document.addEventListener('DOMContentLoaded', function() {
+            const scoreText = document.querySelector('#scoreText');
+            const scoreDisplay = document.querySelector('#score-display');
+            const pcGun = document.querySelector('#pc-gun');
+            const scene = document.querySelector('a-scene');
+            const mouseCursor = document.querySelector('#mouse-cursor');
+            
+            // Detect VR mode
+            scene.addEventListener('enter-vr', function() {
+                isVR = true;
+                if (pcGun) pcGun.setAttribute('visible', 'false');
+                document.querySelector('#crosshair').style.display = 'none';
+            });
+            
+            scene.addEventListener('exit-vr', function() {
+                isVR = false;
+                if (pcGun) pcGun.setAttribute('visible', 'true');
+                document.querySelector('#crosshair').style.display = 'block';
+            });
+            
+            // Get all targets
+            const targets = document.querySelectorAll('.target');
+            
+            // Function to shoot target
+            function shootTarget(target) {
+                // Increase score
+                score += 10;
+                scoreText.setAttribute('value', 'Score: ' + score);
+                scoreDisplay.textContent = 'Score: ' + score;
+                
+                // Store original color
+                const originalColor = target.getAttribute('color');
+                
+                // Flash white
+                target.setAttribute('color', '#FFFFFF');
+                
+                // Animate target (shrink)
+                target.setAttribute('animation', {
+                    property: 'scale',
+                    to: '0.1 0.1 0.1',
+                    dur: 150,
+                    easing: 'easeInQuad'
+                });
+                
+                // Reset target after a delay
+                setTimeout(() => {
+                    target.setAttribute('color', originalColor);
+                    target.setAttribute('animation', {
+                        property: 'scale',
+                        to: '1 1 1',
+                        dur: 150,
+                        easing: 'easeOutQuad'
+                    });
+                }, 600);
+            }
+            
+            // PC shooting - only works when aiming at target
+            document.addEventListener('click', function(evt) {
+                if (!isVR && mouseCursor) {
+                    const raycaster = mouseCursor.components.raycaster;
+                    if (raycaster && raycaster.intersectedEls.length > 0) {
+                        const hitTarget = raycaster.intersectedEls[0];
+                        if (hitTarget.classList.contains('target')) {
+                            shootTarget(hitTarget);
+                            
+                            // Gun recoil animation
+                            if (pcGun) {
+                                pcGun.setAttribute('animation', {
+                                    property: 'position',
+                                    to: '0.3 -0.3 -0.4',
+                                    dur: 50,
+                                    easing: 'easeOutQuad'
+                                });
+                                setTimeout(() => {
+                                    pcGun.setAttribute('animation', {
+                                        property: 'position',
+                                        to: '0.3 -0.3 -0.5',
+                                        dur: 100,
+                                        easing: 'easeInQuad'
+                                    });
+                                }, 50);
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // VR shooting - handled by click events on targets
+            targets.forEach(function(target) {
+                target.addEventListener('click', function(evt) {
+                    if (isVR) {
+                        shootTarget(this);
+                    }
+                });
+            });
+
+            // Hover effects for desktop (crosshair feedback)
+            targets.forEach(function(target) {
+                target.addEventListener('mouseenter', function() {
+                    if (!isVR) {
+                        this.setAttribute('scale', '1.15 1.15 1.15');
+                        document.querySelector('#crosshair').style.borderColor = '#00FF00';
+                    }
+                });
+                
+                target.addEventListener('mouseleave', function() {
+                    if (!isVR) {
+                        const currentScale = this.getAttribute('scale');
+                        if (currentScale.x > 0.5) {
+                            this.setAttribute('scale', '1 1 1');
+                        }
+                        document.querySelector('#crosshair').style.borderColor = 'white';
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
