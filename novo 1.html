@@ -1,260 +1,616 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
-    <title>VR Shooting Gallery</title>
-    <meta name="description" content="VR Shooting Game for Meta Quest">
+    <title>VR Shooting Gallery - Realistic Reload</title>
+    <meta name="description" content="Realistic VR Shooter with Magazine Reload System">
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.0.0/dist/aframe-extras.min.js"></script>
     <style>
-        #crosshair {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 20px;
-            height: 20px;
-            border: 2px solid white;
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 1000;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
         }
-        #instructions {
+        #hud {
             position: fixed;
             top: 20px;
             left: 50%;
             transform: translateX(-50%);
             color: white;
-            font-family: Arial, sans-serif;
             font-size: 18px;
             text-align: center;
             z-index: 1000;
             background: rgba(0,0,0,0.7);
-            padding: 10px 20px;
+            padding: 15px 30px;
             border-radius: 10px;
         }
         #score-display {
-            position: fixed;
-            top: 70px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: white;
-            font-family: Arial, sans-serif;
-            font-size: 24px;
+            font-size: 32px;
             font-weight: bold;
-            z-index: 1000;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            margin-bottom: 5px;
+        }
+        #ammo-display {
+            font-size: 28px;
+            color: #FFD700;
+            margin-bottom: 5px;
+        }
+        #ammo-display.low {
+            color: #FF0000;
+            animation: blink 0.5s infinite;
+        }
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+        #timer-display {
+            font-size: 24px;
+            color: #00FF00;
+        }
+        #instructions {
+            font-size: 14px;
+            margin-top: 10px;
+            color: #AAAAAA;
+        }
+        #game-over {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.95);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 2000;
+        }
+        #game-over h1 {
+            font-size: 48px;
+            margin: 0 0 20px 0;
+        }
+        #game-over button {
+            font-size: 24px;
+            padding: 15px 40px;
+            margin: 10px;
+            cursor: pointer;
+            border: none;
+            border-radius: 10px;
+            background: #4CAF50;
+            color: white;
+        }
+        #game-over button:hover {
+            background: #45a049;
         }
     </style>
 </head>
 <body>
-    <div id="crosshair"></div>
-    <div id="instructions">PC: Click to shoot | VR: Point controller and pull trigger</div>
-    <div id="score-display">Score: 0</div>
+    <div id="hud">
+        <div id="score-display">Score: 0</div>
+        <div id="ammo-display">Ammo: 12/12</div>
+        <div id="timer-display">Time: 60s</div>
+        <div id="instructions">
+            Grip: Pick up gun/magazine | Trigger: Shoot | Reload: Insert mag into gun
+        </div>
+    </div>
 
-    <a-scene cursor="rayOrigin: mouse">
+    <div id="game-over">
+        <h1>TIME'S UP!</h1>
+        <div id="final-score" style="font-size: 36px; margin: 20px 0;">Final Score: 0</div>
+        <button onclick="restartGame()">Play Again</button>
+    </div>
+
+    <a-scene>
         <!-- Sky -->
         <a-sky color="#87CEEB"></a-sky>
 
         <!-- Ground -->
-        <a-plane position="0 0 0" rotation="-90 0 0" width="20" height="20" color="#7BC8A4"></a-plane>
+        <a-plane position="0 0 0" rotation="-90 0 0" width="30" height="30" color="#7BC8A4"></a-plane>
 
         <!-- Lighting -->
-        <a-light type="ambient" color="#445451"></a-light>
-        <a-light type="point" intensity="2" position="2 4 4"></a-light>
+        <a-light type="ambient" color="#555"></a-light>
+        <a-light type="directional" color="#FFF" intensity="0.8" position="-0.5 1 1"></a-light>
+        <a-light type="point" intensity="1" position="2 3 4"></a-light>
 
-        <!-- Camera with controls -->
-        <a-entity id="camera-rig" position="0 1.6 0">
-            <a-camera look-controls wasd-controls>
-                <!-- Raycaster for PC mouse aiming -->
-                <a-entity 
-                    id="mouse-cursor" 
-                    cursor="rayOrigin: mouse" 
-                    raycaster="objects: .clickable; far: 20">
-                </a-entity>
-                
-                <!-- Gun model for PC (visible when not in VR) -->
-                <a-entity id="pc-gun" position="0.3 -0.3 -0.5" rotation="0 0 0" visible="true">
-                    <!-- Gun barrel -->
-                    <a-cylinder position="0 0 -0.2" rotation="90 0 0" radius="0.02" height="0.4" color="#333"></a-cylinder>
-                    <!-- Gun handle -->
-                    <a-box position="0 -0.05 0" width="0.08" height="0.15" depth="0.1" color="#222"></a-box>
-                    <!-- Gun sight -->
-                    <a-box position="0 0.03 0" width="0.02" height="0.02" depth="0.05" color="#666"></a-box>
-                </a-entity>
+        <!-- Player Rig -->
+        <a-entity id="player-rig" position="0 0 0">
+            <!-- Camera/Head -->
+            <a-camera id="camera" position="0 1.6 0" look-controls wasd-controls>
+                <!-- Ammo counter in VR view -->
+                <a-text id="vr-ammo" value="12/12" position="0 -0.3 -0.5" align="center" color="#FFD700" width="0.5"></a-text>
             </a-camera>
             
-            <!-- VR Controllers -->
-            <a-entity id="leftHand" 
-                      laser-controls="hand: left" 
-                      raycaster="objects: .clickable; far: 10"
-                      oculus-touch-controls="hand: left">
-                <!-- Gun model for left hand -->
-                <a-entity position="0 0 -0.1">
-                    <a-cylinder rotation="90 0 0" radius="0.015" height="0.2" color="#333"></a-cylinder>
-                    <a-box position="0 -0.05 0.05" width="0.05" height="0.08" depth="0.08" color="#222"></a-box>
-                </a-entity>
+            <!-- Player Body (visible when looking down) -->
+            <a-entity id="player-body" position="0 1.6 0">
+                <!-- Torso -->
+                <a-box id="torso" position="0 -0.6 -0.1" width="0.4" height="0.6" depth="0.2" color="#2C3E50">
+                    <!-- Ammo pouches on chest -->
+                    <a-box class="ammo-pouch" position="-0.15 0.15 0.12" width="0.08" height="0.12" depth="0.06" color="#8B4513"></a-box>
+                    <a-box class="ammo-pouch" position="-0.05 0.15 0.12" width="0.08" height="0.12" depth="0.06" color="#8B4513"></a-box>
+                    <a-box class="ammo-pouch" position="0.05 0.15 0.12" width="0.08" height="0.12" depth="0.06" color="#8B4513"></a-box>
+                    <a-box class="ammo-pouch" position="0.15 0.15 0.12" width="0.08" height="0.12" depth="0.06" color="#8B4513"></a-box>
+                </a-box>
+                
+                <!-- Magazine spawner (infinite magazines here) -->
+                <a-entity id="magazine-spawner" position="0 -0.45 0.05"></a-entity>
+            </a-entity>
+
+            <!-- LEFT HAND with grabbable magazines -->
+            <a-entity 
+                id="leftHand" 
+                hand-controls="hand: left; handModelStyle: lowPoly"
+                oculus-touch-controls="hand: left"
+                vive-controls="hand: left"
+                hand-grab-controller="hand: left">
             </a-entity>
             
-            <a-entity id="rightHand" 
-                      laser-controls="hand: right" 
-                      raycaster="objects: .clickable; far: 10"
-                      oculus-touch-controls="hand: right">
-                <!-- Gun model for right hand -->
-                <a-entity position="0 0 -0.1">
-                    <a-cylinder rotation="90 0 0" radius="0.015" height="0.2" color="#333"></a-cylinder>
-                    <a-box position="0 -0.05 0.05" width="0.05" height="0.08" depth="0.08" color="#222"></a-box>
-                </a-entity>
+            <!-- RIGHT HAND -->
+            <a-entity 
+                id="rightHand" 
+                hand-controls="hand: right; handModelStyle: lowPoly"
+                oculus-touch-controls="hand: right"
+                vive-controls="hand: right"
+                hand-grab-controller="hand: right">
             </a-entity>
         </a-entity>
 
-        <!-- Score display in 3D -->
-        <a-text id="scoreText" value="Score: 0" position="0 3.5 -5" align="center" color="#FFF" width="10"></a-text>
+        <!-- Gun on the floor (grabbable) -->
+        <a-entity id="gun" class="grabbable" position="0 0.8 -1.5" grabbable gun-controller>
+            <!-- Gun body -->
+            <a-box position="0 0 -0.1" width="0.08" height="0.12" depth="0.3" color="#1a1a1a"></a-box>
+            <!-- Gun barrel -->
+            <a-cylinder position="0 0.02 -0.28" rotation="90 0 0" radius="0.015" height="0.25" color="#333"></a-cylinder>
+            <!-- Gun handle -->
+            <a-box position="0 -0.08 0.02" width="0.06" height="0.12" depth="0.08" color="#222"></a-box>
+            <!-- Magazine slot (for visual feedback) -->
+            <a-box id="mag-slot" position="0 -0.1 0" width="0.04" height="0.08" depth="0.06" color="#444" opacity="0.3"></a-box>
+            <!-- Gun sight -->
+            <a-box position="0 0.07 -0.08" width="0.015" height="0.02" depth="0.03" color="#666"></a-box>
+            <!-- Muzzle flash (hidden by default) -->
+            <a-sphere id="muzzle-flash" position="0 0.02 -0.4" radius="0.05" color="#FFFF00" opacity="0" visible="false"></a-sphere>
+        </a-entity>
+
+        <!-- Magazines on chest (grabbable) -->
+        <a-entity id="magazine1" class="grabbable magazine" position="0 1.15 -0.05" magazine-controller>
+            <a-box width="0.03" height="0.1" depth="0.05" color="#FFA500"></a-box>
+        </a-entity>
+        <a-entity id="magazine2" class="grabbable magazine" position="0.05 1.15 -0.05" magazine-controller>
+            <a-box width="0.03" height="0.1" depth="0.05" color="#FFA500"></a-box>
+        </a-entity>
+
+        <!-- Score and info displays in 3D -->
+        <a-text id="scoreText" value="Score: 0" position="0 3.8 -5" align="center" color="#FFF" width="10"></a-text>
+        <a-text id="timerText" value="Time: 60s" position="0 3.4 -5" align="center" color="#00FF00" width="8"></a-text>
 
         <!-- Back wall -->
-        <a-box position="0 2 -6" width="12" height="5" depth="0.1" color="#8B4513"></a-box>
+        <a-box position="0 2.5 -6" width="14" height="6" depth="0.1" color="#8B4513"></a-box>
 
-        <!-- Targets Row 1 -->
-        <a-sphere class="clickable target" position="-3 2 -5.5" radius="0.35" color="#FF0000"></a-sphere>
-        <a-sphere class="clickable target" position="-1.5 2 -5.5" radius="0.35" color="#FF4500"></a-sphere>
-        <a-sphere class="clickable target" position="0 2 -5.5" radius="0.35" color="#00FF00"></a-sphere>
-        <a-sphere class="clickable target" position="1.5 2 -5.5" radius="0.35" color="#0000FF"></a-sphere>
-        <a-sphere class="clickable target" position="3 2 -5.5" radius="0.35" color="#FF00FF"></a-sphere>
+        <!-- RED TARGETS (10 points) -->
+        <a-sphere class="clickable target easy" data-points="10" position="-4.5 2 -5.5" radius="0.35" color="#FF0000"></a-sphere>
+        <a-sphere class="clickable target easy" data-points="10" position="-3 2 -5.5" radius="0.35" color="#FF0000"></a-sphere>
+        <a-sphere class="clickable target easy" data-points="10" position="3 2 -5.5" radius="0.35" color="#FF0000"></a-sphere>
+        <a-sphere class="clickable target easy" data-points="10" position="4.5 2 -5.5" radius="0.35" color="#FF0000"></a-sphere>
 
-        <!-- Targets Row 2 -->
-        <a-sphere class="clickable target" position="-2.25 3 -5.5" radius="0.35" color="#FFFF00"></a-sphere>
-        <a-sphere class="clickable target" position="-0.75 3 -5.5" radius="0.35" color="#00FFFF"></a-sphere>
-        <a-sphere class="clickable target" position="0.75 3 -5.5" radius="0.35" color="#FFA500"></a-sphere>
-        <a-sphere class="clickable target" position="2.25 3 -5.5" radius="0.35" color="#800080"></a-sphere>
+        <!-- YELLOW TARGETS (20 points) -->
+        <a-sphere class="clickable target medium" data-points="20" position="-3.5 3 -5.5" radius="0.3" color="#FFFF00"></a-sphere>
+        <a-sphere class="clickable target medium" data-points="20" position="-1.5 3 -5.5" radius="0.3" color="#FFFF00"></a-sphere>
+        <a-sphere class="clickable target medium" data-points="20" position="0 2.5 -5.5" radius="0.3" color="#FFFF00"></a-sphere>
+        <a-sphere class="clickable target medium" data-points="20" position="1.5 3 -5.5" radius="0.3" color="#FFFF00"></a-sphere>
+        <a-sphere class="clickable target medium" data-points="20" position="3.5 3 -5.5" radius="0.3" color="#FFFF00"></a-sphere>
 
-        <!-- Side decorations -->
-        <a-cylinder position="-5 1 -3" radius="0.2" height="2" color="#654321"></a-cylinder>
-        <a-cone position="-5 2.2 -3" radius-bottom="0.4" radius-top="0.05" height="0.6" color="#228B22"></a-cone>
-        
-        <a-cylinder position="5 1 -3" radius="0.2" height="2" color="#654321"></a-cylinder>
-        <a-cone position="5 2.2 -3" radius-bottom="0.4" radius-top="0.05" height="0.6" color="#228B22"></a-cone>
+        <!-- BLUE TARGETS (30 points) -->
+        <a-sphere class="clickable target hard" data-points="30" position="-2.5 4 -5.5" radius="0.25" color="#0000FF"></a-sphere>
+        <a-sphere class="clickable target hard" data-points="30" position="-0.8 4 -5.5" radius="0.25" color="#0000FF"></a-sphere>
+        <a-sphere class="clickable target hard" data-points="30" position="0.8 4 -5.5" radius="0.25" color="#0000FF"></a-sphere>
+        <a-sphere class="clickable target hard" data-points="30" position="2.5 4 -5.5" radius="0.25" color="#0000FF"></a-sphere>
+
+        <!-- Extra moving targets -->
+        <a-sphere class="clickable target medium" data-points="20" position="-4 3.5 -5.5" radius="0.3" color="#FF00FF"></a-sphere>
+        <a-sphere class="clickable target medium" data-points="20" position="4 3.5 -5.5" radius="0.3" color="#00FFFF"></a-sphere>
+
+        <!-- Decorations -->
+        <a-cylinder position="-6 1 -3" radius="0.2" height="2" color="#654321"></a-cylinder>
+        <a-cone position="-6 2.2 -3" radius-bottom="0.5" radius-top="0.05" height="0.8" color="#228B22"></a-cone>
+        <a-cylinder position="6 1 -3" radius="0.2" height="2" color="#654321"></a-cylinder>
+        <a-cone position="6 2.2 -3" radius-bottom="0.5" radius-top="0.05" height="0.8" color="#228B22"></a-cone>
     </a-scene>
 
     <script>
         let score = 0;
-        let isVR = false;
+        let timeLeft = 60;
+        let gameActive = true;
+        let timerInterval;
+        let currentAmmo = 12;
+        let maxAmmo = 12;
+        let gunHeld = false;
+        let magazineInGun = true;
 
-        // Wait for scene to load
-        document.addEventListener('DOMContentLoaded', function() {
-            const scoreText = document.querySelector('#scoreText');
-            const scoreDisplay = document.querySelector('#score-display');
-            const pcGun = document.querySelector('#pc-gun');
-            const scene = document.querySelector('a-scene');
-            const mouseCursor = document.querySelector('#mouse-cursor');
-            
-            // Detect VR mode
-            scene.addEventListener('enter-vr', function() {
-                isVR = true;
-                if (pcGun) pcGun.setAttribute('visible', 'false');
-                document.querySelector('#crosshair').style.display = 'none';
-            });
-            
-            scene.addEventListener('exit-vr', function() {
-                isVR = false;
-                if (pcGun) pcGun.setAttribute('visible', 'true');
-                document.querySelector('#crosshair').style.display = 'block';
-            });
-            
-            // Get all targets
-            const targets = document.querySelectorAll('.target');
-            
-            // Function to shoot target
-            function shootTarget(target) {
-                // Increase score
-                score += 10;
-                scoreText.setAttribute('value', 'Score: ' + score);
-                scoreDisplay.textContent = 'Score: ' + score;
+        // Game state
+        const gameState = {
+            score: 0,
+            timeLeft: 60,
+            gameActive: true,
+            currentAmmo: 12,
+            maxAmmo: 12,
+            gunHeld: false,
+            magazineInGun: true,
+            heldMagazine: null
+        };
+
+        // Random target movement component
+        AFRAME.registerComponent('random-move', {
+            schema: {
+                speed: {type: 'number', default: 2000},
+                range: {type: 'number', default: 0.5}
+            },
+            init: function() {
+                this.basePosition = this.el.getAttribute('position');
+                this.moveTarget();
+            },
+            moveTarget: function() {
+                if (!gameState.gameActive) return;
                 
-                // Store original color
-                const originalColor = target.getAttribute('color');
+                const range = this.data.range;
+                const newX = this.basePosition.x + (Math.random() - 0.5) * range;
+                const newY = this.basePosition.y + (Math.random() - 0.5) * range;
                 
-                // Flash white
-                target.setAttribute('color', '#FFFFFF');
-                
-                // Animate target (shrink)
-                target.setAttribute('animation', {
-                    property: 'scale',
-                    to: '0.1 0.1 0.1',
-                    dur: 150,
-                    easing: 'easeInQuad'
+                this.el.setAttribute('animation', {
+                    property: 'position',
+                    to: `${newX} ${newY} ${this.basePosition.z}`,
+                    dur: this.data.speed,
+                    easing: 'linear'
                 });
                 
-                // Reset target after a delay
-                setTimeout(() => {
-                    target.setAttribute('color', originalColor);
-                    target.setAttribute('animation', {
-                        property: 'scale',
-                        to: '1 1 1',
-                        dur: 150,
-                        easing: 'easeOutQuad'
-                    });
-                }, 600);
+                setTimeout(() => this.moveTarget(), this.data.speed);
             }
-            
-            // PC shooting - only works when aiming at target
-            document.addEventListener('click', function(evt) {
-                if (!isVR && mouseCursor) {
-                    const raycaster = mouseCursor.components.raycaster;
-                    if (raycaster && raycaster.intersectedEls.length > 0) {
-                        const hitTarget = raycaster.intersectedEls[0];
-                        if (hitTarget.classList.contains('target')) {
-                            shootTarget(hitTarget);
-                            
-                            // Gun recoil animation
-                            if (pcGun) {
-                                pcGun.setAttribute('animation', {
-                                    property: 'position',
-                                    to: '0.3 -0.3 -0.4',
-                                    dur: 50,
-                                    easing: 'easeOutQuad'
-                                });
-                                setTimeout(() => {
-                                    pcGun.setAttribute('animation', {
-                                        property: 'position',
-                                        to: '0.3 -0.3 -0.5',
-                                        dur: 100,
-                                        easing: 'easeInQuad'
-                                    });
-                                }, 50);
-                            }
-                        }
+        });
+
+        // Grabbable object component
+        AFRAME.registerComponent('grabbable', {
+            init: function() {
+                this.grabbed = false;
+                this.grabber = null;
+                this.originalParent = this.el.parentNode;
+            }
+        });
+
+        // Magazine controller
+        AFRAME.registerComponent('magazine-controller', {
+            init: function() {
+                this.el.classList.add('magazine');
+            }
+        });
+
+        // Gun controller component
+        AFRAME.registerComponent('gun-controller', {
+            init: function() {
+                this.checkReload = this.checkReload.bind(this);
+                this.el.addEventListener('triggerdown', this.shoot.bind(this));
+            },
+            shoot: function(evt) {
+                if (!gameState.gameActive) return;
+                if (!gameState.gunHeld) return;
+                if (gameState.currentAmmo <= 0) {
+                    // Click sound for empty gun
+                    console.log('Out of ammo! Reload!');
+                    return;
+                }
+                
+                // Decrease ammo
+                gameState.currentAmmo--;
+                updateAmmoDisplay();
+                
+                // Muzzle flash
+                const muzzleFlash = this.el.querySelector('#muzzle-flash');
+                if (muzzleFlash) {
+                    muzzleFlash.setAttribute('visible', 'true');
+                    muzzleFlash.setAttribute('opacity', '0.8');
+                    setTimeout(() => {
+                        muzzleFlash.setAttribute('visible', 'false');
+                    }, 50);
+                }
+                
+                // Gun recoil
+                const currentRot = this.el.getAttribute('rotation');
+                this.el.setAttribute('animation__recoil', {
+                    property: 'rotation',
+                    to: `${currentRot.x - 10} ${currentRot.y} ${currentRot.z}`,
+                    dur: 50,
+                    easing: 'easeOutQuad'
+                });
+                setTimeout(() => {
+                    this.el.setAttribute('animation__reset', {
+                        property: 'rotation',
+                        to: `${currentRot.x} ${currentRot.y} ${currentRot.z}`,
+                        dur: 100,
+                        easing: 'easeInQuad'
+                    });
+                }, 50);
+                
+                // Raycast to check if we hit a target
+                const gunPos = this.el.object3D.getWorldPosition(new THREE.Vector3());
+                const gunDir = new THREE.Vector3(0, 0, -1);
+                gunDir.applyQuaternion(this.el.object3D.getWorldQuaternion(new THREE.Quaternion()));
+                
+                const raycaster = new THREE.Raycaster(gunPos, gunDir, 0, 20);
+                const targets = document.querySelectorAll('.target');
+                
+                targets.forEach(target => {
+                    const intersects = raycaster.intersectObject(target.object3D, true);
+                    if (intersects.length > 0) {
+                        shootTarget(target);
+                    }
+                });
+            },
+            checkReload: function(magazine) {
+                // Check if magazine is close to the gun
+                const gunPos = this.el.object3D.getWorldPosition(new THREE.Vector3());
+                const magPos = magazine.object3D.getWorldPosition(new THREE.Vector3());
+                const distance = gunPos.distanceTo(magPos);
+                
+                if (distance < 0.15) {
+                    // Reload!
+                    gameState.currentAmmo = gameState.maxAmmo;
+                    gameState.magazineInGun = true;
+                    updateAmmoDisplay();
+                    
+                    // Remove the magazine from hand and respawn a new one
+                    magazine.parentNode.removeChild(magazine);
+                    spawnNewMagazine();
+                    
+                    // Visual feedback
+                    const magSlot = this.el.querySelector('#mag-slot');
+                    if (magSlot) {
+                        magSlot.setAttribute('color', '#FFA500');
+                        setTimeout(() => {
+                            magSlot.setAttribute('color', '#444');
+                        }, 200);
+                    }
+                    
+                    console.log('Reloaded!');
+                }
+            }
+        });
+
+        // Hand grab controller
+        AFRAME.registerComponent('hand-grab-controller', {
+            schema: {
+                hand: {type: 'string', default: 'right'}
+            },
+            init: function() {
+                this.grabbedObject = null;
+                this.el.addEventListener('gripdown', this.grab.bind(this));
+                this.el.addEventListener('gripup', this.release.bind(this));
+            },
+            grab: function() {
+                // Find nearby grabbable objects
+                const handPos = this.el.object3D.getWorldPosition(new THREE.Vector3());
+                const grabbables = document.querySelectorAll('.grabbable');
+                
+                let closest = null;
+                let closestDist = 0.2; // Grab range
+                
+                grabbables.forEach(obj => {
+                    if (obj.components.grabbable.grabbed) return; // Already grabbed
+                    
+                    const objPos = obj.object3D.getWorldPosition(new THREE.Vector3());
+                    const dist = handPos.distanceTo(objPos);
+                    
+                    if (dist < closestDist) {
+                        closest = obj;
+                        closestDist = dist;
+                    }
+                });
+                
+                if (closest) {
+                    // Grab the object
+                    this.grabbedObject = closest;
+                    closest.components.grabbable.grabbed = true;
+                    closest.components.grabbable.grabber = this.el;
+                    
+                    // Attach to hand
+                    const originalParent = closest.parentNode;
+                    this.el.appendChild(closest);
+                    closest.setAttribute('position', '0 0 -0.1');
+                    closest.setAttribute('rotation', '0 0 0');
+                    
+                    // Check if it's the gun
+                    if (closest.id === 'gun') {
+                        gameState.gunHeld = true;
+                        console.log('Gun grabbed!');
+                    }
+                    
+                    // Check if it's a magazine
+                    if (closest.classList.contains('magazine')) {
+                        gameState.heldMagazine = closest;
+                        console.log('Magazine grabbed!');
                     }
                 }
+            },
+            release: function() {
+                if (!this.grabbedObject) return;
+                
+                const obj = this.grabbedObject;
+                
+                // Check if releasing magazine near gun for reload
+                if (obj.classList.contains('magazine') && gameState.gunHeld) {
+                    const gun = document.querySelector('#gun');
+                    if (gun && gun.components['gun-controller']) {
+                        gun.components['gun-controller'].checkReload(obj);
+                    }
+                }
+                
+                // Release the object
+                obj.components.grabbable.grabbed = false;
+                obj.components.grabbable.grabber = null;
+                
+                if (obj.id === 'gun') {
+                    gameState.gunHeld = false;
+                }
+                
+                if (obj.classList.contains('magazine')) {
+                    gameState.heldMagazine = null;
+                }
+                
+                this.grabbedObject = null;
+            },
+            tick: function() {
+                // Keep grabbed object attached to hand
+                if (this.grabbedObject) {
+                    // Position and rotation are handled by parenting
+                }
+            }
+        });
+
+        function spawnNewMagazine() {
+            // Spawn a new magazine on the chest
+            const spawner = document.querySelector('#magazine-spawner');
+            if (!spawner) return;
+            
+            const newMag = document.createElement('a-entity');
+            newMag.classList.add('grabbable', 'magazine');
+            newMag.setAttribute('magazine-controller', '');
+            newMag.setAttribute('position', `${(Math.random() - 0.5) * 0.1} 0.7 0`);
+            
+            const box = document.createElement('a-box');
+            box.setAttribute('width', '0.03');
+            box.setAttribute('height', '0.1');
+            box.setAttribute('depth', '0.05');
+            box.setAttribute('color', '#FFA500');
+            newMag.appendChild(box);
+            
+            spawner.parentNode.appendChild(newMag);
+        }
+
+        function updateAmmoDisplay() {
+            const ammoStr = `${gameState.currentAmmo}/${gameState.maxAmmo}`;
+            const ammoDisplay = document.querySelector('#ammo-display');
+            const vrAmmo = document.querySelector('#vr-ammo');
+            
+            if (ammoDisplay) {
+                ammoDisplay.textContent = `Ammo: ${ammoStr}`;
+                if (gameState.currentAmmo <= 3) {
+                    ammoDisplay.classList.add('low');
+                } else {
+                    ammoDisplay.classList.remove('low');
+                }
+            }
+            
+            if (vrAmmo) {
+                vrAmmo.setAttribute('value', ammoStr);
+                if (gameState.currentAmmo <= 3) {
+                    vrAmmo.setAttribute('color', '#FF0000');
+                } else {
+                    vrAmmo.setAttribute('color', '#FFD700');
+                }
+            }
+        }
+
+        function shootTarget(target) {
+            if (!gameState.gameActive) return;
+            
+            const points = parseInt(target.getAttribute('data-points')) || 10;
+            gameState.score += points;
+            updateScore();
+            
+            const originalColor = target.getAttribute('color');
+            target.setAttribute('color', '#FFFFFF');
+            
+            target.setAttribute('animation__shoot', {
+                property: 'scale',
+                to: '0.1 0.1 0.1',
+                dur: 150,
+                easing: 'easeInQuad'
             });
             
-            // VR shooting - handled by click events on targets
-            targets.forEach(function(target) {
-                target.addEventListener('click', function(evt) {
-                    if (isVR) {
-                        shootTarget(this);
-                    }
+            setTimeout(() => {
+                target.setAttribute('color', originalColor);
+                target.setAttribute('animation__reset', {
+                    property: 'scale',
+                    to: '1 1 1',
+                    dur: 150,
+                    easing: 'easeOutQuad'
                 });
-            });
+            }, 400);
+        }
 
-            // Hover effects for desktop (crosshair feedback)
-            targets.forEach(function(target) {
-                target.addEventListener('mouseenter', function() {
-                    if (!isVR) {
-                        this.setAttribute('scale', '1.15 1.15 1.15');
-                        document.querySelector('#crosshair').style.borderColor = '#00FF00';
-                    }
-                });
+        function updateScore() {
+            const scoreStr = `Score: ${gameState.score}`;
+            const scoreText = document.querySelector('#scoreText');
+            const scoreDisplay = document.querySelector('#score-display');
+            
+            if (scoreText) scoreText.setAttribute('value', scoreStr);
+            if (scoreDisplay) scoreDisplay.textContent = scoreStr;
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                if (!gameState.gameActive) return;
                 
-                target.addEventListener('mouseleave', function() {
-                    if (!isVR) {
-                        const currentScale = this.getAttribute('scale');
-                        if (currentScale.x > 0.5) {
-                            this.setAttribute('scale', '1 1 1');
-                        }
-                        document.querySelector('#crosshair').style.borderColor = 'white';
-                    }
-                });
+                gameState.timeLeft--;
+                updateTimer();
+                
+                if (gameState.timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function updateTimer() {
+            const timeStr = `Time: ${gameState.timeLeft}s`;
+            const timerText = document.querySelector('#timerText');
+            const timerDisplay = document.querySelector('#timer-display');
+            
+            if (timerText) timerText.setAttribute('value', timeStr);
+            if (timerDisplay) timerDisplay.textContent = timeStr;
+            
+            if (gameState.timeLeft <= 10) {
+                if (timerDisplay) timerDisplay.style.color = '#FF0000';
+                if (timerText) timerText.setAttribute('color', '#FF0000');
+            } else if (gameState.timeLeft <= 30) {
+                if (timerDisplay) timerDisplay.style.color = '#FFFF00';
+                if (timerText) timerText.setAttribute('color', '#FFFF00');
+            }
+        }
+
+        function endGame() {
+            gameState.gameActive = false;
+            clearInterval(timerInterval);
+            document.querySelector('#final-score').textContent = `Final Score: ${gameState.score}`;
+            document.querySelector('#game-over').style.display = 'block';
+        }
+
+        window.restartGame = function() {
+            gameState.score = 0;
+            gameState.timeLeft = 60;
+            gameState.gameActive = true;
+            gameState.currentAmmo = 12;
+            document.querySelector('#game-over').style.display = 'none';
+            updateScore();
+            updateAmmoDisplay();
+            updateTimer();
+            const timerDisplay = document.querySelector('#timer-display');
+            const timerText = document.querySelector('#timerText');
+            if (timerDisplay) timerDisplay.style.color = '#00FF00';
+            if (timerText) timerText.setAttribute('color', '#00FF00');
+            startTimer();
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add movement to targets
+            const mediumTargets = document.querySelectorAll('.target.medium');
+            const hardTargets = document.querySelectorAll('.target.hard');
+            
+            mediumTargets.forEach(target => {
+                target.setAttribute('random-move', 'speed: 2500; range: 0.4');
             });
+            
+            hardTargets.forEach(target => {
+                target.setAttribute('random-move', 'speed: 1500; range: 0.6');
+            });
+            
+            startTimer();
+            updateAmmoDisplay();
         });
     </script>
 </body>
