@@ -268,10 +268,20 @@
                     closest.components.grabbable.grabbed = true;
                     closest.components.grabbable.grabber = this.el;
                     
+                    // Store world position and rotation before parenting
+                    const worldPos = new THREE.Vector3();
+                    const worldQuat = new THREE.Quaternion();
+                    closest.object3D.getWorldPosition(worldPos);
+                    closest.object3D.getWorldQuaternion(worldQuat);
+                    
                     // Store current position for velocity calculation
-                    closest.components.grabbable.previousPosition.copy(
-                        closest.object3D.getWorldPosition(new THREE.Vector3())
-                    );
+                    closest.components.grabbable.previousPosition.copy(worldPos);
+                    
+                    // Store original scale
+                    if (!closest.hasAttribute('data-original-scale')) {
+                        const scale = closest.getAttribute('scale');
+                        closest.setAttribute('data-original-scale', `${scale.x} ${scale.y} ${scale.z}`);
+                    }
                     
                     // Remove physics if any
                     if (closest.hasAttribute('dynamic-body')) {
@@ -279,16 +289,20 @@
                     }
                     
                     // Attach to hand
+                    const originalParent = closest.parentNode;
                     this.el.appendChild(closest);
-                    closest.setAttribute('position', '0 0 -0.15');
+                    
+                    // Position in front of hand, visible and easy to see
+                    closest.setAttribute('position', '0 -0.05 -0.2');
                     closest.setAttribute('rotation', '0 0 0');
+                    closest.setAttribute('scale', '1 1 1');
                     
                     // Remove highlight
                     closest.setAttribute('material', 'emissiveIntensity', 0);
                     
                     // Hide prompt
                     const vrPrompt = document.querySelector('#vr-prompt');
-                    if (vrPrompt) vrPrompt.setAttribute('value', '');
+                    if (vrPrompt) vrPrompt.setAttribute('value', 'Holding Object');
                     
                     console.log(this.data.hand + ' hand grabbed object!');
                 }
@@ -297,24 +311,47 @@
                 if (!this.grabbedObject) return;
                 
                 const obj = this.grabbedObject;
+                const scene = document.querySelector('a-scene');
+                
+                // Get current world position and rotation before detaching
+                const worldPos = new THREE.Vector3();
+                const worldRot = new THREE.Euler();
+                obj.object3D.getWorldPosition(worldPos);
+                obj.object3D.getWorldQuaternion(new THREE.Quaternion());
                 
                 // Calculate velocity for throwing
-                const currentPos = obj.object3D.getWorldPosition(new THREE.Vector3());
                 const velocity = new THREE.Vector3().subVectors(
-                    currentPos, 
+                    worldPos, 
                     obj.components.grabbable.previousPosition
                 );
                 
-                // Detach from hand
-                const scene = document.querySelector('a-scene');
+                // Detach from hand and add back to scene
                 scene.appendChild(obj);
                 
-                // Set world position
-                obj.object3D.position.copy(currentPos);
+                // Restore original scale
+                const originalScale = obj.getAttribute('data-original-scale');
+                if (originalScale) {
+                    obj.setAttribute('scale', originalScale);
+                }
                 
-                // Apply throw velocity (simplified physics)
-                const throwStrength = 5;
-                const throwVelocity = velocity.multiplyScalar(throwStrength);
+                // Set world position
+                obj.setAttribute('position', `${worldPos.x} ${worldPos.y} ${worldPos.z}`);
+                
+                // Apply throw velocity
+                const throwStrength = 15; // Increased for better throwing
+                const handVelocity = new THREE.Vector3();
+                
+                // Get hand forward direction
+                const handDir = new THREE.Vector3(0, 0, -1);
+                handDir.applyQuaternion(this.el.object3D.getWorldQuaternion(new THREE.Quaternion()));
+                
+                // Combine natural velocity with hand direction
+                const throwVelocity = velocity.multiplyScalar(throwStrength).add(handDir.multiplyScalar(2));
+                
+                // Ensure minimum throw speed
+                if (throwVelocity.length() < 0.5) {
+                    throwVelocity.copy(handDir).multiplyScalar(3);
+                }
                 
                 // Add a simple physics animation
                 this.animateThrow(obj, throwVelocity);
@@ -323,50 +360,69 @@
                 obj.components.grabbable.grabbed = false;
                 obj.components.grabbable.grabber = null;
                 
+                // Update prompt
+                const vrPrompt = document.querySelector('#vr-prompt');
+                if (vrPrompt) vrPrompt.setAttribute('value', '');
+                
                 this.grabbedObject = null;
                 
-                console.log('Object released with velocity:', throwVelocity);
+                console.log('Object thrown with velocity:', throwVelocity.length());
             },
             animateThrow: function(obj, velocity) {
                 const startPos = obj.object3D.position.clone();
-                const gravity = -9.8;
+                const gravity = -4.9; // Reduced gravity for more dramatic throws
                 let time = 0;
+                const maxTime = 5; // Max simulation time
+                
                 const interval = setInterval(() => {
                     time += 0.016; // ~60fps
                     
-                    // Physics simulation
+                    // Physics simulation: projectile motion
                     const newPos = new THREE.Vector3(
                         startPos.x + velocity.x * time,
                         startPos.y + velocity.y * time + 0.5 * gravity * time * time,
                         startPos.z + velocity.z * time
                     );
                     
-                    // Stop if hits ground
-                    if (newPos.y <= 0.08) {
-                        newPos.y = 0.08;
-                        clearInterval(interval);
+                    // Check if hits ground
+                    if (newPos.y <= 0.1) {
+                        newPos.y = 0.1;
                         
                         // Bounce effect
+                        const bounceHeight = Math.abs(velocity.y * 0.3);
                         obj.setAttribute('animation', {
                             property: 'position',
-                            to: `${newPos.x} ${newPos.y + 0.05} ${newPos.z}`,
-                            dur: 100,
+                            to: `${newPos.x} ${newPos.y + bounceHeight} ${newPos.z}`,
+                            dur: 200,
                             easing: 'easeOutQuad'
                         });
+                        
                         setTimeout(() => {
                             obj.setAttribute('animation', {
                                 property: 'position',
                                 to: `${newPos.x} ${newPos.y} ${newPos.z}`,
-                                dur: 100,
+                                dur: 200,
                                 easing: 'easeInQuad'
                             });
-                        }, 100);
+                        }, 200);
+                        
+                        clearInterval(interval);
+                        return;
                     }
                     
-                    obj.object3D.position.copy(newPos);
+                    // Check if goes out of bounds
+                    if (Math.abs(newPos.x) > 15 || Math.abs(newPos.z) > 15 || newPos.y > 10) {
+                        clearInterval(interval);
+                        // Reset to safe position
+                        obj.setAttribute('position', '0 0.5 -1.5');
+                        return;
+                    }
                     
-                    // Stop after 3 seconds
-                    if (time > 3) {
+                    // Update position
+                    obj.setAttribute('position', `${newPos.x} ${newPos.y} ${newPos.z}`);
+                    
+                    // Stop after max time
+                    if (time > maxTime) {
                         clearInterval(interval);
                     }
                 }, 16);
