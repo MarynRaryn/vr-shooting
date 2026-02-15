@@ -1,4 +1,4 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
@@ -112,26 +112,37 @@
         <a-light type="point" intensity="1" position="2 3 4"></a-light>
 
         <!-- Player Rig -->
-        <a-entity id="player-rig" position="0 0 0">
+        <a-entity id="player-rig" position="0 0 0" movement-controls="speed: 0.15; fly: false">
             <!-- Camera/Head -->
-            <a-camera id="camera" position="0 1.6 0" look-controls wasd-controls>
+            <a-camera id="camera" position="0 1.6 0" look-controls>
                 <!-- Ammo counter in VR view -->
                 <a-text id="vr-ammo" value="12/12" position="0 -0.3 -0.5" align="center" color="#FFD700" width="0.5"></a-text>
             </a-camera>
             
             <!-- Player Body (visible when looking down) -->
-            <a-entity id="player-body" position="0 1.6 0">
+            <a-entity id="player-body" position="0 0.9 0">
                 <!-- Torso -->
-                <a-box id="torso" position="0 -0.6 -0.1" width="0.4" height="0.6" depth="0.2" color="#2C3E50">
-                    <!-- Ammo pouches on chest -->
-                    <a-box class="ammo-pouch" position="-0.15 0.15 0.12" width="0.08" height="0.12" depth="0.06" color="#8B4513"></a-box>
-                    <a-box class="ammo-pouch" position="-0.05 0.15 0.12" width="0.08" height="0.12" depth="0.06" color="#8B4513"></a-box>
-                    <a-box class="ammo-pouch" position="0.05 0.15 0.12" width="0.08" height="0.12" depth="0.06" color="#8B4513"></a-box>
-                    <a-box class="ammo-pouch" position="0.15 0.15 0.12" width="0.08" height="0.12" depth="0.06" color="#8B4513"></a-box>
+                <a-box id="torso" position="0 0 -0.15" width="0.5" height="0.7" depth="0.25" color="#2C3E50">
+                    <!-- Chest plate for visibility -->
+                    <a-box position="0 0.2 0.13" width="0.45" height="0.3" depth="0.02" color="#34495E"></a-box>
                 </a-box>
                 
-                <!-- Magazine spawner (infinite magazines here) -->
-                <a-entity id="magazine-spawner" position="0 -0.45 0.05"></a-entity>
+                <!-- Ammo vest on chest -->
+                <a-entity id="ammo-vest" position="0 0 0.1">
+                    <!-- Magazine pouches - fixed positions -->
+                    <a-box class="ammo-pouch" position="-0.15 0.15 0" width="0.08" height="0.12" depth="0.04" color="#654321"></a-box>
+                    <a-box class="ammo-pouch" position="-0.05 0.15 0" width="0.08" height="0.12" depth="0.04" color="#654321"></a-box>
+                    <a-box class="ammo-pouch" position="0.05 0.15 0" width="0.08" height="0.12" depth="0.04" color="#654321"></a-box>
+                    <a-box class="ammo-pouch" position="0.15 0.15 0" width="0.08" height="0.12" depth="0.04" color="#654321"></a-box>
+                    
+                    <!-- Magazines on chest (grabbable) - inside player body so they move with player -->
+                    <a-entity id="magazine1" class="grabbable magazine" position="-0.1 0.25 0" magazine-controller>
+                        <a-box width="0.035" height="0.11" depth="0.06" color="#FFA500"></a-box>
+                    </a-entity>
+                    <a-entity id="magazine2" class="grabbable magazine" position="0.1 0.25 0" magazine-controller>
+                        <a-box width="0.035" height="0.11" depth="0.06" color="#FFA500"></a-box>
+                    </a-entity>
+                </a-entity>
             </a-entity>
 
             <!-- LEFT HAND with grabbable magazines -->
@@ -140,6 +151,7 @@
                 hand-controls="hand: left; handModelStyle: lowPoly"
                 oculus-touch-controls="hand: left"
                 vive-controls="hand: left"
+                raycaster="objects: .grabbable; far: 0.5"
                 hand-grab-controller="hand: left">
             </a-entity>
             
@@ -149,6 +161,7 @@
                 hand-controls="hand: right; handModelStyle: lowPoly"
                 oculus-touch-controls="hand: right"
                 vive-controls="hand: right"
+                raycaster="objects: .grabbable; far: 0.5"
                 hand-grab-controller="hand: right">
             </a-entity>
         </a-entity>
@@ -169,12 +182,12 @@
             <a-sphere id="muzzle-flash" position="0 0.02 -0.4" radius="0.05" color="#FFFF00" opacity="0" visible="false"></a-sphere>
         </a-entity>
 
-        <!-- Magazines on chest (grabbable) -->
-        <a-entity id="magazine1" class="grabbable magazine" position="0 1.15 -0.05" magazine-controller>
-            <a-box width="0.03" height="0.1" depth="0.05" color="#FFA500"></a-box>
+        <!-- Magazines on chest (grabbable) - start with 2 visible -->
+        <a-entity id="magazine1" class="grabbable magazine" position="-0.1 1.15 0.1" magazine-controller>
+            <a-box width="0.035" height="0.11" depth="0.06" color="#FFA500"></a-box>
         </a-entity>
-        <a-entity id="magazine2" class="grabbable magazine" position="0.05 1.15 -0.05" magazine-controller>
-            <a-box width="0.03" height="0.1" depth="0.05" color="#FFA500"></a-box>
+        <a-entity id="magazine2" class="grabbable magazine" position="0.1 1.15 0.1" magazine-controller>
+            <a-box width="0.035" height="0.11" depth="0.06" color="#FFA500"></a-box>
         </a-entity>
 
         <!-- Score and info displays in 3D -->
@@ -382,15 +395,51 @@
                 this.el.addEventListener('gripup', this.release.bind(this));
             },
             grab: function() {
-                // Find nearby grabbable objects
+                // Use raycaster to find what we're pointing at
+                const raycaster = this.el.components.raycaster;
+                if (raycaster && raycaster.intersectedEls.length > 0) {
+                    const pointedObject = raycaster.intersectedEls[0];
+                    
+                    if (pointedObject.classList.contains('grabbable') && 
+                        !pointedObject.components.grabbable.grabbed) {
+                        
+                        // Grab the object we're pointing at
+                        this.grabbedObject = pointedObject;
+                        pointedObject.components.grabbable.grabbed = true;
+                        pointedObject.components.grabbable.grabber = this.el;
+                        
+                        // Store original parent and position
+                        pointedObject.setAttribute('data-original-parent', pointedObject.parentNode.id || 'scene');
+                        
+                        // Attach to hand
+                        this.el.appendChild(pointedObject);
+                        pointedObject.setAttribute('position', '0 0 -0.1');
+                        pointedObject.setAttribute('rotation', '0 0 0');
+                        
+                        // Check if it's the gun
+                        if (pointedObject.id === 'gun') {
+                            gameState.gunHeld = true;
+                            console.log('Gun grabbed!');
+                        }
+                        
+                        // Check if it's a magazine
+                        if (pointedObject.classList.contains('magazine')) {
+                            gameState.heldMagazine = pointedObject;
+                            console.log('Magazine grabbed!');
+                        }
+                    }
+                    return;
+                }
+                
+                // Fallback: check nearby objects if raycaster didn't hit anything
                 const handPos = this.el.object3D.getWorldPosition(new THREE.Vector3());
                 const grabbables = document.querySelectorAll('.grabbable');
                 
                 let closest = null;
-                let closestDist = 0.2; // Grab range
+                let closestDist = 0.15; // Grab range
                 
                 grabbables.forEach(obj => {
-                    if (obj.components.grabbable.grabbed) return; // Already grabbed
+                    if (obj.components.grabbable.grabbed) return;
                     
                     const objPos = obj.object3D.getWorldPosition(new THREE.Vector3());
                     const dist = handPos.distanceTo(objPos);
@@ -402,24 +451,19 @@
                 });
                 
                 if (closest) {
-                    // Grab the object
                     this.grabbedObject = closest;
                     closest.components.grabbable.grabbed = true;
                     closest.components.grabbable.grabber = this.el;
                     
-                    // Attach to hand
-                    const originalParent = closest.parentNode;
                     this.el.appendChild(closest);
                     closest.setAttribute('position', '0 0 -0.1');
                     closest.setAttribute('rotation', '0 0 0');
                     
-                    // Check if it's the gun
                     if (closest.id === 'gun') {
                         gameState.gunHeld = true;
                         console.log('Gun grabbed!');
                     }
                     
-                    // Check if it's a magazine
                     if (closest.classList.contains('magazine')) {
                         gameState.heldMagazine = closest;
                         console.log('Magazine grabbed!');
@@ -454,31 +498,46 @@
                 this.grabbedObject = null;
             },
             tick: function() {
-                // Keep grabbed object attached to hand
-                if (this.grabbedObject) {
-                    // Position and rotation are handled by parenting
+                // Visual feedback for what we're pointing at
+                const raycaster = this.el.components.raycaster;
+                if (raycaster && raycaster.intersectedEls.length > 0) {
+                    const pointedObject = raycaster.intersectedEls[0];
+                    if (pointedObject.classList.contains('grabbable') && 
+                        !pointedObject.components.grabbable.grabbed) {
+                        // Could add highlight effect here
+                    }
                 }
             }
         });
 
         function spawnNewMagazine() {
-            // Spawn a new magazine on the chest
-            const spawner = document.querySelector('#magazine-spawner');
-            if (!spawner) return;
+            // Spawn a new magazine on the chest inside the ammo vest (so it moves with player)
+            const ammoVest = document.querySelector('#ammo-vest');
+            if (!ammoVest) {
+                console.error('Ammo vest not found!');
+                return;
+            }
+            
+            // Alternate between left and right chest positions
+            const magCount = document.querySelectorAll('.magazine').length;
+            const xPos = (magCount % 2 === 0) ? -0.1 : 0.1;
             
             const newMag = document.createElement('a-entity');
             newMag.classList.add('grabbable', 'magazine');
             newMag.setAttribute('magazine-controller', '');
-            newMag.setAttribute('position', `${(Math.random() - 0.5) * 0.1} 0.7 0`);
+            newMag.setAttribute('grabbable', '');
+            newMag.setAttribute('position', `${xPos} 0.25 0`); // Relative to ammo-vest
             
             const box = document.createElement('a-box');
-            box.setAttribute('width', '0.03');
-            box.setAttribute('height', '0.1');
-            box.setAttribute('depth', '0.05');
+            box.setAttribute('width', '0.035');
+            box.setAttribute('height', '0.11');
+            box.setAttribute('depth', '0.06');
             box.setAttribute('color', '#FFA500');
             newMag.appendChild(box);
             
-            spawner.parentNode.appendChild(newMag);
+            ammoVest.appendChild(newMag);
+            
+            console.log('New magazine spawned on chest at position:', xPos);
         }
 
         function updateAmmoDisplay() {
