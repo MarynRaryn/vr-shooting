@@ -2,62 +2,13 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>VR Shooting Gallery - Realistic Reload</title>
-    <meta name="description" content="Realistic VR Shooter with Magazine Reload System">
+    <title>VR Grabbing Test - Playground</title>
+    <meta name="description" content="VR Playground with Grabbable Objects">
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.0.0/dist/aframe-extras.min.js"></script>
     <style>
         body {
             margin: 0;
             font-family: Arial, sans-serif;
-        }
-        #crosshair {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 4px;
-            height: 4px;
-            background: white;
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 1000;
-            box-shadow: 0 0 10px rgba(0,0,0,0.8), 0 0 20px rgba(255,255,255,0.5);
-        }
-        #crosshair::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 20px;
-            height: 20px;
-            border: 2px solid white;
-            border-radius: 50%;
-            opacity: 0.3;
-        }
-        #interaction-prompt {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            margin-top: 40px;
-            color: white;
-            font-size: 20px;
-            font-weight: bold;
-            text-align: center;
-            z-index: 1000;
-            background: rgba(0,0,0,0.8);
-            padding: 10px 20px;
-            border-radius: 8px;
-            display: none;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-        }
-        #interaction-prompt.gun {
-            color: #FFD700;
-        }
-        #interaction-prompt.magazine {
-            color: #FFA500;
         }
         #hud {
             position: fixed;
@@ -65,89 +16,26 @@
             left: 50%;
             transform: translateX(-50%);
             color: white;
-            font-size: 18px;
+            font-size: 20px;
             text-align: center;
             z-index: 1000;
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.8);
             padding: 15px 30px;
             border-radius: 10px;
         }
-        #score-display {
-            font-size: 32px;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        #ammo-display {
-            font-size: 28px;
-            color: #FFD700;
-            margin-bottom: 5px;
-        }
-        #ammo-display.low {
-            color: #FF0000;
-            animation: blink 0.5s infinite;
-        }
-        @keyframes blink {
-            0%, 50% { opacity: 1; }
-            51%, 100% { opacity: 0.3; }
-        }
-        #timer-display {
-            font-size: 24px;
-            color: #00FF00;
-        }
         #instructions {
-            font-size: 14px;
+            font-size: 16px;
             margin-top: 10px;
             color: #AAAAAA;
-        }
-        #game-over {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.95);
-            color: white;
-            padding: 40px;
-            border-radius: 20px;
-            text-align: center;
-            z-index: 2000;
-        }
-        #game-over h1 {
-            font-size: 48px;
-            margin: 0 0 20px 0;
-        }
-        #game-over button {
-            font-size: 24px;
-            padding: 15px 40px;
-            margin: 10px;
-            cursor: pointer;
-            border: none;
-            border-radius: 10px;
-            background: #4CAF50;
-            color: white;
-        }
-        #game-over button:hover {
-            background: #45a049;
         }
     </style>
 </head>
 <body>
-    <div id="crosshair"></div>
-    <div id="interaction-prompt"></div>
-    
     <div id="hud">
-        <div id="score-display">Score: 0</div>
-        <div id="ammo-display">Ammo: 12/12</div>
-        <div id="timer-display">Time: 60s</div>
+        <div style="font-size: 28px; font-weight: bold; margin-bottom: 10px;">🎮 VR Grabbing Playground</div>
         <div id="instructions">
-            Grip: Pick up gun/magazine | Trigger: Shoot | Reload: Insert mag into gun
+            Move hand near objects | Press GRIP to grab | Release GRIP to drop
         </div>
-    </div>
-
-    <div id="game-over">
-        <h1>TIME'S UP!</h1>
-        <div id="final-score" style="font-size: 36px; margin: 20px 0;">Final Score: 0</div>
-        <button onclick="restartGame()">Play Again</button>
     </div>
 
     <a-scene>
@@ -155,62 +43,33 @@
         <a-sky color="#87CEEB"></a-sky>
 
         <!-- Ground -->
-        <a-plane position="0 0 0" rotation="-90 0 0" width="30" height="30" color="#7BC8A4"></a-plane>
+        <a-plane position="0 0 0" rotation="-90 0 0" width="30" height="30" color="#7BC8A4" shadow="receive: true"></a-plane>
 
         <!-- Lighting -->
-        <a-light type="ambient" color="#555"></a-light>
-        <a-light type="directional" color="#FFF" intensity="0.8" position="-0.5 1 1"></a-light>
+        <a-light type="ambient" color="#666"></a-light>
+        <a-light type="directional" color="#FFF" intensity="0.8" position="-0.5 1 1" shadow="cast: true"></a-light>
         <a-light type="point" intensity="1" position="2 3 4"></a-light>
 
-        <!-- Player Rig -->
+        <!-- Player Rig with Movement Controls -->
         <a-entity id="player-rig" position="0 0 0" movement-controls="speed: 0.15; fly: false">
             <!-- Camera/Head -->
             <a-camera id="camera" position="0 1.6 0" look-controls>
-                <!-- Center raycaster for crosshair interaction -->
-                <a-entity 
-                    id="center-ray" 
-                    raycaster="objects: .grabbable; far: 3"
-                    position="0 0 0">
-                </a-entity>
-                
-                <!-- Ammo counter in VR view -->
-                <a-text id="vr-ammo" value="12/12" position="0 -0.3 -0.5" align="center" color="#FFD700" width="0.5"></a-text>
-                <a-text id="vr-prompt" value="" position="0 0.1 -0.5" align="center" color="#FFD700" width="0.4"></a-text>
+                <!-- In-VR prompt -->
+                <a-text id="vr-prompt" value="" position="0 0.2 -0.6" align="center" color="#FFD700" width="0.5"></a-text>
             </a-camera>
             
-            <!-- Player Body (visible when looking down) -->
+            <!-- Player Body -->
             <a-entity id="player-body" position="0 0.9 0">
                 <!-- Torso -->
-                <a-box id="torso" position="0 0 -0.15" width="0.5" height="0.7" depth="0.25" color="#2C3E50">
-                    <!-- Chest plate for visibility -->
-                    <a-box position="0 0.2 0.13" width="0.45" height="0.3" depth="0.02" color="#34495E"></a-box>
-                </a-box>
-                
-                <!-- Ammo vest on chest -->
-                <a-entity id="ammo-vest" position="0 0 0.1">
-                    <!-- Magazine pouches - fixed positions -->
-                    <a-box class="ammo-pouch" position="-0.15 0.15 0" width="0.08" height="0.12" depth="0.04" color="#654321"></a-box>
-                    <a-box class="ammo-pouch" position="-0.05 0.15 0" width="0.08" height="0.12" depth="0.04" color="#654321"></a-box>
-                    <a-box class="ammo-pouch" position="0.05 0.15 0" width="0.08" height="0.12" depth="0.04" color="#654321"></a-box>
-                    <a-box class="ammo-pouch" position="0.15 0.15 0" width="0.08" height="0.12" depth="0.04" color="#654321"></a-box>
-                    
-                    <!-- Magazines on chest (grabbable) - inside player body so they move with player -->
-                    <a-entity id="magazine1" class="grabbable magazine" position="-0.1 0.25 0" magazine-controller grabbable proximity-prompt>
-                        <a-box width="0.035" height="0.11" depth="0.06" color="#FFA500"></a-box>
-                    </a-entity>
-                    <a-entity id="magazine2" class="grabbable magazine" position="0.1 0.25 0" magazine-controller grabbable proximity-prompt>
-                        <a-box width="0.035" height="0.11" depth="0.06" color="#FFA500"></a-box>
-                    </a-entity>
-                </a-entity>
+                <a-box id="torso" position="0 0 -0.15" width="0.5" height="0.7" depth="0.25" color="#2C3E50"></a-box>
             </a-entity>
 
-            <!-- LEFT HAND with grabbable magazines -->
+            <!-- LEFT HAND -->
             <a-entity 
                 id="leftHand" 
                 hand-controls="hand: left; handModelStyle: lowPoly"
                 oculus-touch-controls="hand: left"
                 vive-controls="hand: left"
-                raycaster="objects: .grabbable; far: 0.5"
                 hand-grab-controller="hand: left">
             </a-entity>
             
@@ -220,135 +79,98 @@
                 hand-controls="hand: right; handModelStyle: lowPoly"
                 oculus-touch-controls="hand: right"
                 vive-controls="hand: right"
-                raycaster="objects: .grabbable; far: 0.5"
                 hand-grab-controller="hand: right">
             </a-entity>
         </a-entity>
 
-        <!-- Gun on the floor (grabbable) -->
-        <a-entity id="gun" class="grabbable" position="0 0.8 -1.5" grabbable proximity-prompt gun-controller>
-            <!-- Gun body -->
-            <a-box position="0 0 -0.1" width="0.08" height="0.12" depth="0.3" color="#1a1a1a"></a-box>
-            <!-- Gun barrel -->
-            <a-cylinder position="0 0.02 -0.28" rotation="90 0 0" radius="0.015" height="0.25" color="#333"></a-cylinder>
-            <!-- Gun handle -->
-            <a-box position="0 -0.08 0.02" width="0.06" height="0.12" depth="0.08" color="#222"></a-box>
-            <!-- Magazine slot (for visual feedback) -->
-            <a-box id="mag-slot" position="0 -0.1 0" width="0.04" height="0.08" depth="0.06" color="#444" opacity="0.3"></a-box>
-            <!-- Gun sight -->
-            <a-box position="0 0.07 -0.08" width="0.015" height="0.02" depth="0.03" color="#666"></a-box>
-            <!-- Muzzle flash (hidden by default) -->
-            <a-sphere id="muzzle-flash" position="0 0.02 -0.4" radius="0.05" color="#FFFF00" opacity="0" visible="false"></a-sphere>
-        </a-entity>
+        <!-- Grabbable Blocks on Table -->
+        <!-- Red Cube -->
+        <a-box class="grabbable" position="-0.5 1.1 -1.5" width="0.15" height="0.15" depth="0.15" color="#FF0000" 
+               grabbable proximity-prompt shadow="cast: true">
+        </a-box>
 
-        <!-- Magazines on chest (grabbable) - start with 2 visible -->
-        <a-entity id="magazine1" class="grabbable magazine" position="-0.1 1.15 0.1" magazine-controller>
-            <a-box width="0.035" height="0.11" depth="0.06" color="#FFA500"></a-box>
-        </a-entity>
-        <a-entity id="magazine2" class="grabbable magazine" position="0.1 1.15 0.1" magazine-controller>
-            <a-box width="0.035" height="0.11" depth="0.06" color="#FFA500"></a-box>
-        </a-entity>
+        <!-- Green Cube -->
+        <a-box class="grabbable" position="-0.2 1.1 -1.5" width="0.15" height="0.15" depth="0.15" color="#00FF00" 
+               grabbable proximity-prompt shadow="cast: true">
+        </a-box>
 
-        <!-- Score and info displays in 3D -->
-        <a-text id="scoreText" value="Score: 0" position="0 3.8 -5" align="center" color="#FFF" width="10"></a-text>
-        <a-text id="timerText" value="Time: 60s" position="0 3.4 -5" align="center" color="#00FF00" width="8"></a-text>
+        <!-- Blue Cube -->
+        <a-box class="grabbable" position="0.1 1.1 -1.5" width="0.15" height="0.15" depth="0.15" color="#0000FF" 
+               grabbable proximity-prompt shadow="cast: true">
+        </a-box>
 
-        <!-- Back wall -->
-        <a-box position="0 2.5 -6" width="14" height="6" depth="0.1" color="#8B4513"></a-box>
+        <!-- Yellow Cube -->
+        <a-box class="grabbable" position="0.4 1.1 -1.5" width="0.15" height="0.15" depth="0.15" color="#FFFF00" 
+               grabbable proximity-prompt shadow="cast: true">
+        </a-box>
 
-        <!-- RED TARGETS (10 points) -->
-        <a-sphere class="clickable target easy" data-points="10" position="-4.5 2 -5.5" radius="0.35" color="#FF0000"></a-sphere>
-        <a-sphere class="clickable target easy" data-points="10" position="-3 2 -5.5" radius="0.35" color="#FF0000"></a-sphere>
-        <a-sphere class="clickable target easy" data-points="10" position="3 2 -5.5" radius="0.35" color="#FF0000"></a-sphere>
-        <a-sphere class="clickable target easy" data-points="10" position="4.5 2 -5.5" radius="0.35" color="#FF0000"></a-sphere>
+        <!-- Purple Sphere -->
+        <a-sphere class="grabbable" position="-0.3 1.2 -1.2" radius="0.08" color="#FF00FF" 
+                  grabbable proximity-prompt shadow="cast: true">
+        </a-sphere>
 
-        <!-- YELLOW TARGETS (20 points) -->
-        <a-sphere class="clickable target medium" data-points="20" position="-3.5 3 -5.5" radius="0.3" color="#FFFF00"></a-sphere>
-        <a-sphere class="clickable target medium" data-points="20" position="-1.5 3 -5.5" radius="0.3" color="#FFFF00"></a-sphere>
-        <a-sphere class="clickable target medium" data-points="20" position="0 2.5 -5.5" radius="0.3" color="#FFFF00"></a-sphere>
-        <a-sphere class="clickable target medium" data-points="20" position="1.5 3 -5.5" radius="0.3" color="#FFFF00"></a-sphere>
-        <a-sphere class="clickable target medium" data-points="20" position="3.5 3 -5.5" radius="0.3" color="#FFFF00"></a-sphere>
+        <!-- Orange Sphere -->
+        <a-sphere class="grabbable" position="0.2 1.2 -1.2" radius="0.08" color="#FFA500" 
+                  grabbable proximity-prompt shadow="cast: true">
+        </a-sphere>
 
-        <!-- BLUE TARGETS (30 points) -->
-        <a-sphere class="clickable target hard" data-points="30" position="-2.5 4 -5.5" radius="0.25" color="#0000FF"></a-sphere>
-        <a-sphere class="clickable target hard" data-points="30" position="-0.8 4 -5.5" radius="0.25" color="#0000FF"></a-sphere>
-        <a-sphere class="clickable target hard" data-points="30" position="0.8 4 -5.5" radius="0.25" color="#0000FF"></a-sphere>
-        <a-sphere class="clickable target hard" data-points="30" position="2.5 4 -5.5" radius="0.25" color="#0000FF"></a-sphere>
+        <!-- Cyan Cylinder -->
+        <a-cylinder class="grabbable" position="-0.5 1.15 -1.8" radius="0.06" height="0.2" color="#00FFFF" 
+                    grabbable proximity-prompt shadow="cast: true">
+        </a-cylinder>
 
-        <!-- Extra moving targets -->
-        <a-sphere class="clickable target medium" data-points="20" position="-4 3.5 -5.5" radius="0.3" color="#FF00FF"></a-sphere>
-        <a-sphere class="clickable target medium" data-points="20" position="4 3.5 -5.5" radius="0.3" color="#00FFFF"></a-sphere>
+        <!-- Pink Cylinder -->
+        <a-cylinder class="grabbable" position="0.3 1.15 -1.8" radius="0.06" height="0.2" color="#FF69B4" 
+                    grabbable proximity-prompt shadow="cast: true">
+        </a-cylinder>
 
-        <!-- Decorations -->
-        <a-cylinder position="-6 1 -3" radius="0.2" height="2" color="#654321"></a-cylinder>
-        <a-cone position="-6 2.2 -3" radius-bottom="0.5" radius-top="0.05" height="0.8" color="#228B22"></a-cone>
-        <a-cylinder position="6 1 -3" radius="0.2" height="2" color="#654321"></a-cylinder>
-        <a-cone position="6 2.2 -3" radius-bottom="0.5" radius-top="0.05" height="0.8" color="#228B22"></a-cone>
+        <!-- Large Gray Cube (heavy) -->
+        <a-box class="grabbable" position="0 1.2 -2" width="0.25" height="0.25" depth="0.25" color="#888888" 
+               grabbable proximity-prompt shadow="cast: true">
+        </a-box>
+
+        <!-- Table -->
+        <a-box position="0 0.95 -1.5" width="1.5" height="0.1" depth="1" color="#8B4513" shadow="receive: true"></a-box>
+        <!-- Table Legs -->
+        <a-box position="-0.65 0.5 -1.9" width="0.08" height="0.9" depth="0.08" color="#654321"></a-box>
+        <a-box position="0.65 0.5 -1.9" width="0.08" height="0.9" depth="0.08" color="#654321"></a-box>
+        <a-box position="-0.65 0.5 -1.1" width="0.08" height="0.9" depth="0.08" color="#654321"></a-box>
+        <a-box position="0.65 0.5 -1.1" width="0.08" height="0.9" depth="0.08" color="#654321"></a-box>
+
+        <!-- Wall with Target Area -->
+        <a-box position="0 1.5 -3" width="4" height="3" depth="0.1" color="#D2691E"></a-box>
+        <a-text value="THROW OBJECTS HERE!" position="0 2 -2.95" align="center" color="#FFF" width="3"></a-text>
+        
+        <!-- Target circles on wall -->
+        <a-ring position="0 1.5 -2.95" radius-inner="0.15" radius-outer="0.2" color="#FF0000"></a-ring>
+        <a-ring position="0 1.5 -2.95" radius-inner="0.25" radius-outer="0.3" color="#FFFF00"></a-ring>
+        <a-ring position="0 1.5 -2.95" radius-inner="0.35" radius-outer="0.4" color="#00FF00"></a-ring>
+
+        <!-- Decorative objects -->
+        <a-cylinder position="-2 0.5 -2" radius="0.3" height="1" color="#654321"></a-cylinder>
+        <a-cone position="-2 1.2 -2" radius-bottom="0.5" radius-top="0.05" height="0.8" color="#228B22"></a-cone>
+        
+        <a-cylinder position="2 0.5 -2" radius="0.3" height="1" color="#654321"></a-cylinder>
+        <a-cone position="2 1.2 -2" radius-bottom="0.5" radius-top="0.05" height="0.8" color="#228B22"></a-cone>
+
+        <!-- Floor markers to show play area -->
+        <a-circle position="0 0.01 0" radius="0.3" rotation="-90 0 0" color="#FFFFFF" opacity="0.5"></a-circle>
+        <a-text value="START HERE" position="0 0.01 0.5" rotation="-90 0 0" align="center" color="#000" width="2"></a-text>
     </a-scene>
 
     <script>
-        let score = 0;
-        let timeLeft = 60;
-        let gameActive = true;
-        let timerInterval;
-        let currentAmmo = 12;
-        let maxAmmo = 12;
-        let gunHeld = false;
-        let magazineInGun = true;
-
-        // Game state
-        const gameState = {
-            score: 0,
-            timeLeft: 60,
-            gameActive: true,
-            currentAmmo: 12,
-            maxAmmo: 12,
-            gunHeld: false,
-            gunHand: null,
-            magazineInGun: true,
-            heldMagazine: null,
-            magazineHand: null
-        };
-
-        // Random target movement component
-        AFRAME.registerComponent('random-move', {
-            schema: {
-                speed: {type: 'number', default: 2000},
-                range: {type: 'number', default: 0.5}
-            },
-            init: function() {
-                this.basePosition = this.el.getAttribute('position');
-                this.moveTarget();
-            },
-            moveTarget: function() {
-                if (!gameState.gameActive) return;
-                
-                const range = this.data.range;
-                const newX = this.basePosition.x + (Math.random() - 0.5) * range;
-                const newY = this.basePosition.y + (Math.random() - 0.5) * range;
-                
-                this.el.setAttribute('animation', {
-                    property: 'position',
-                    to: `${newX} ${newY} ${this.basePosition.z}`,
-                    dur: this.data.speed,
-                    easing: 'linear'
-                });
-                
-                setTimeout(() => this.moveTarget(), this.data.speed);
-            }
-        });
-
         // Grabbable object component
         AFRAME.registerComponent('grabbable', {
             init: function() {
                 this.grabbed = false;
                 this.grabber = null;
                 this.originalParent = this.el.parentNode;
-                this.nearHand = null;
+                this.velocity = new THREE.Vector3();
+                this.previousPosition = new THREE.Vector3();
             }
         });
 
-        // Proximity prompt component - shows prompts when hand is near
+        // Proximity prompt component
         AFRAME.registerComponent('proximity-prompt', {
             schema: {
                 distance: {type: 'number', default: 0.25}
@@ -365,19 +187,16 @@
                 const objPos = this.el.object3D.getWorldPosition(new THREE.Vector3());
                 const leftHand = document.querySelector('#leftHand');
                 const rightHand = document.querySelector('#rightHand');
-                const interactionPrompt = document.querySelector('#interaction-prompt');
                 const vrPrompt = document.querySelector('#vr-prompt');
                 
-                let nearHand = null;
-                let closestDist = this.data.distance;
+                let nearHand = false;
                 
                 // Check left hand
                 if (leftHand) {
                     const leftPos = leftHand.object3D.getWorldPosition(new THREE.Vector3());
                     const leftDist = objPos.distanceTo(leftPos);
-                    if (leftDist < closestDist) {
-                        nearHand = 'left';
-                        closestDist = leftDist;
+                    if (leftDist < this.data.distance) {
+                        nearHand = true;
                     }
                 }
                 
@@ -385,137 +204,30 @@
                 if (rightHand) {
                     const rightPos = rightHand.object3D.getWorldPosition(new THREE.Vector3());
                     const rightDist = objPos.distanceTo(rightPos);
-                    if (rightDist < closestDist) {
-                        nearHand = 'right';
-                        closestDist = rightDist;
+                    if (rightDist < this.data.distance) {
+                        nearHand = true;
                     }
                 }
                 
                 if (nearHand) {
-                    this.el.components.grabbable.nearHand = nearHand;
-                    
                     // Show prompt
-                    if (this.el.id === 'gun' && !gameState.gunHeld) {
-                        if (interactionPrompt) {
-                            interactionPrompt.textContent = '🔫 Press GRIP to Equip Gun';
-                            interactionPrompt.className = 'gun';
-                            interactionPrompt.style.display = 'block';
-                        }
-                        if (vrPrompt) {
-                            vrPrompt.setAttribute('value', 'GRIP: Equip Gun');
-                            vrPrompt.setAttribute('color', '#FFD700');
-                        }
-                    } else if (this.el.classList.contains('magazine')) {
-                        if (interactionPrompt) {
-                            interactionPrompt.textContent = '📦 Press GRIP to Hold Magazine';
-                            interactionPrompt.className = 'magazine';
-                            interactionPrompt.style.display = 'block';
-                        }
-                        if (vrPrompt) {
-                            vrPrompt.setAttribute('value', 'GRIP: Hold Magazine');
-                            vrPrompt.setAttribute('color', '#FFA500');
-                        }
+                    if (vrPrompt) {
+                        vrPrompt.setAttribute('value', 'GRIP to Grab');
+                        vrPrompt.setAttribute('color', '#00FF00');
                     }
+                    
+                    // Highlight the object
+                    const currentColor = this.el.getAttribute('color');
+                    if (!this.el.hasAttribute('data-original-color')) {
+                        this.el.setAttribute('data-original-color', currentColor);
+                    }
+                    
+                    // Make it glow
+                    this.el.setAttribute('material', 'emissive', currentColor);
+                    this.el.setAttribute('material', 'emissiveIntensity', 0.3);
                 } else {
-                    this.el.components.grabbable.nearHand = null;
-                }
-            }
-        });
-
-        // Magazine controller
-        AFRAME.registerComponent('magazine-controller', {
-            init: function() {
-                this.el.classList.add('magazine');
-            }
-        });
-
-        // Gun controller component
-        AFRAME.registerComponent('gun-controller', {
-            init: function() {
-                this.checkReload = this.checkReload.bind(this);
-                this.el.addEventListener('triggerdown', this.shoot.bind(this));
-            },
-            shoot: function(evt) {
-                if (!gameState.gameActive) return;
-                if (!gameState.gunHeld) return;
-                if (gameState.currentAmmo <= 0) {
-                    // Click sound for empty gun
-                    console.log('Out of ammo! Reload!');
-                    return;
-                }
-                
-                // Decrease ammo
-                gameState.currentAmmo--;
-                updateAmmoDisplay();
-                
-                // Muzzle flash
-                const muzzleFlash = this.el.querySelector('#muzzle-flash');
-                if (muzzleFlash) {
-                    muzzleFlash.setAttribute('visible', 'true');
-                    muzzleFlash.setAttribute('opacity', '0.8');
-                    setTimeout(() => {
-                        muzzleFlash.setAttribute('visible', 'false');
-                    }, 50);
-                }
-                
-                // Gun recoil
-                const currentRot = this.el.getAttribute('rotation');
-                this.el.setAttribute('animation__recoil', {
-                    property: 'rotation',
-                    to: `${currentRot.x - 10} ${currentRot.y} ${currentRot.z}`,
-                    dur: 50,
-                    easing: 'easeOutQuad'
-                });
-                setTimeout(() => {
-                    this.el.setAttribute('animation__reset', {
-                        property: 'rotation',
-                        to: `${currentRot.x} ${currentRot.y} ${currentRot.z}`,
-                        dur: 100,
-                        easing: 'easeInQuad'
-                    });
-                }, 50);
-                
-                // Raycast to check if we hit a target
-                const gunPos = this.el.object3D.getWorldPosition(new THREE.Vector3());
-                const gunDir = new THREE.Vector3(0, 0, -1);
-                gunDir.applyQuaternion(this.el.object3D.getWorldQuaternion(new THREE.Quaternion()));
-                
-                const raycaster = new THREE.Raycaster(gunPos, gunDir, 0, 20);
-                const targets = document.querySelectorAll('.target');
-                
-                targets.forEach(target => {
-                    const intersects = raycaster.intersectObject(target.object3D, true);
-                    if (intersects.length > 0) {
-                        shootTarget(target);
-                    }
-                });
-            },
-            checkReload: function(magazine) {
-                // Check if magazine is close to the gun
-                const gunPos = this.el.object3D.getWorldPosition(new THREE.Vector3());
-                const magPos = magazine.object3D.getWorldPosition(new THREE.Vector3());
-                const distance = gunPos.distanceTo(magPos);
-                
-                if (distance < 0.15) {
-                    // Reload!
-                    gameState.currentAmmo = gameState.maxAmmo;
-                    gameState.magazineInGun = true;
-                    updateAmmoDisplay();
-                    
-                    // Remove the magazine from hand and respawn a new one
-                    magazine.parentNode.removeChild(magazine);
-                    spawnNewMagazine();
-                    
-                    // Visual feedback
-                    const magSlot = this.el.querySelector('#mag-slot');
-                    if (magSlot) {
-                        magSlot.setAttribute('color', '#FFA500');
-                        setTimeout(() => {
-                            magSlot.setAttribute('color', '#444');
-                        }, 200);
-                    }
-                    
-                    console.log('Reloaded!');
+                    // Remove highlight
+                    this.el.setAttribute('material', 'emissiveIntensity', 0);
                 }
             }
         });
@@ -539,7 +251,7 @@
                 let closestDist = 0.25; // Grab range
                 
                 grabbables.forEach(obj => {
-                    if (obj.components.grabbable.grabbed) return; // Already grabbed
+                    if (obj.components.grabbable.grabbed) return;
                     
                     const objPos = obj.object3D.getWorldPosition(new THREE.Vector3());
                     const dist = handPos.distanceTo(objPos);
@@ -556,42 +268,29 @@
                     closest.components.grabbable.grabbed = true;
                     closest.components.grabbable.grabber = this.el;
                     
+                    // Store current position for velocity calculation
+                    closest.components.grabbable.previousPosition.copy(
+                        closest.object3D.getWorldPosition(new THREE.Vector3())
+                    );
+                    
+                    // Remove physics if any
+                    if (closest.hasAttribute('dynamic-body')) {
+                        closest.removeAttribute('dynamic-body');
+                    }
+                    
                     // Attach to hand
                     this.el.appendChild(closest);
+                    closest.setAttribute('position', '0 0 -0.15');
+                    closest.setAttribute('rotation', '0 0 0');
                     
-                    if (this.data.hand === 'right') {
-                        closest.setAttribute('position', '0 -0.05 -0.12');
-                        closest.setAttribute('rotation', '-15 0 0');
-                    } else {
-                        closest.setAttribute('position', '0 0 -0.1');
-                        closest.setAttribute('rotation', '0 0 0');
-                    }
+                    // Remove highlight
+                    closest.setAttribute('material', 'emissiveIntensity', 0);
                     
-                    // Check if it's the gun
-                    if (closest.id === 'gun') {
-                        gameState.gunHeld = true;
-                        gameState.gunHand = this.data.hand;
-                        console.log('Gun grabbed with', this.data.hand, 'hand!');
-                        
-                        // Hide prompt
-                        const interactionPrompt = document.querySelector('#interaction-prompt');
-                        const vrPrompt = document.querySelector('#vr-prompt');
-                        if (interactionPrompt) interactionPrompt.style.display = 'none';
-                        if (vrPrompt) vrPrompt.setAttribute('value', '');
-                    }
+                    // Hide prompt
+                    const vrPrompt = document.querySelector('#vr-prompt');
+                    if (vrPrompt) vrPrompt.setAttribute('value', '');
                     
-                    // Check if it's a magazine
-                    if (closest.classList.contains('magazine')) {
-                        gameState.heldMagazine = closest;
-                        gameState.magazineHand = this.data.hand;
-                        console.log('Magazine grabbed with', this.data.hand, 'hand!');
-                        
-                        // Hide prompt
-                        const interactionPrompt = document.querySelector('#interaction-prompt');
-                        const vrPrompt = document.querySelector('#vr-prompt');
-                        if (interactionPrompt) interactionPrompt.style.display = 'none';
-                        if (vrPrompt) vrPrompt.setAttribute('value', '');
-                    }
+                    console.log(this.data.hand + ' hand grabbed object!');
                 }
             },
             release: function() {
@@ -599,224 +298,97 @@
                 
                 const obj = this.grabbedObject;
                 
-                // Check if releasing magazine near gun for reload
-                if (obj.classList.contains('magazine') && gameState.gunHeld) {
-                    const gun = document.querySelector('#gun');
-                    if (gun && gun.components['gun-controller']) {
-                        gun.components['gun-controller'].checkReload(obj);
-                        this.grabbedObject = null;
-                        return;
-                    }
-                }
+                // Calculate velocity for throwing
+                const currentPos = obj.object3D.getWorldPosition(new THREE.Vector3());
+                const velocity = new THREE.Vector3().subVectors(
+                    currentPos, 
+                    obj.components.grabbable.previousPosition
+                );
                 
-                // Release the object
+                // Detach from hand
+                const scene = document.querySelector('a-scene');
+                scene.appendChild(obj);
+                
+                // Set world position
+                obj.object3D.position.copy(currentPos);
+                
+                // Apply throw velocity (simplified physics)
+                const throwStrength = 5;
+                const throwVelocity = velocity.multiplyScalar(throwStrength);
+                
+                // Add a simple physics animation
+                this.animateThrow(obj, throwVelocity);
+                
+                // Release
                 obj.components.grabbable.grabbed = false;
                 obj.components.grabbable.grabber = null;
                 
-                if (obj.id === 'gun') {
-                    gameState.gunHeld = false;
-                    gameState.gunHand = null;
-                }
-                
-                if (obj.classList.contains('magazine')) {
-                    gameState.heldMagazine = null;
-                    gameState.magazineHand = null;
-                }
-                
                 this.grabbedObject = null;
+                
+                console.log('Object released with velocity:', throwVelocity);
+            },
+            animateThrow: function(obj, velocity) {
+                const startPos = obj.object3D.position.clone();
+                const gravity = -9.8;
+                let time = 0;
+                const interval = setInterval(() => {
+                    time += 0.016; // ~60fps
+                    
+                    // Physics simulation
+                    const newPos = new THREE.Vector3(
+                        startPos.x + velocity.x * time,
+                        startPos.y + velocity.y * time + 0.5 * gravity * time * time,
+                        startPos.z + velocity.z * time
+                    );
+                    
+                    // Stop if hits ground
+                    if (newPos.y <= 0.08) {
+                        newPos.y = 0.08;
+                        clearInterval(interval);
+                        
+                        // Bounce effect
+                        obj.setAttribute('animation', {
+                            property: 'position',
+                            to: `${newPos.x} ${newPos.y + 0.05} ${newPos.z}`,
+                            dur: 100,
+                            easing: 'easeOutQuad'
+                        });
+                        setTimeout(() => {
+                            obj.setAttribute('animation', {
+                                property: 'position',
+                                to: `${newPos.x} ${newPos.y} ${newPos.z}`,
+                                dur: 100,
+                                easing: 'easeInQuad'
+                            });
+                        }, 100);
+                    }
+                    
+                    obj.object3D.position.copy(newPos);
+                    
+                    // Stop after 3 seconds
+                    if (time > 3) {
+                        clearInterval(interval);
+                    }
+                }, 16);
             },
             tick: function() {
-                // Auto-reload check when holding magazine near gun
-                if (this.grabbedObject && this.grabbedObject.classList.contains('magazine') && gameState.gunHeld) {
-                    const gun = document.querySelector('#gun');
-                    if (!gun) return;
-                    
-                    const magPos = this.grabbedObject.object3D.getWorldPosition(new THREE.Vector3());
-                    const gunPos = gun.object3D.getWorldPosition(new THREE.Vector3());
-                    const distance = magPos.distanceTo(gunPos);
-                    
-                    if (distance < 0.2) {
-                        // Show reload prompt
-                        const vrPrompt = document.querySelector('#vr-prompt');
-                        const interactionPrompt = document.querySelector('#interaction-prompt');
-                        if (vrPrompt) {
-                            vrPrompt.setAttribute('value', 'RELOADING...');
-                            vrPrompt.setAttribute('color', '#00FF00');
-                        }
-                        if (interactionPrompt) {
-                            interactionPrompt.textContent = '✅ RELOADING...';
-                            interactionPrompt.className = '';
-                            interactionPrompt.style.display = 'block';
-                            interactionPrompt.style.color = '#00FF00';
-                        }
-                    }
+                // Update previous position for velocity calculation
+                if (this.grabbedObject) {
+                    const currentPos = this.grabbedObject.object3D.getWorldPosition(new THREE.Vector3());
+                    this.grabbedObject.components.grabbable.previousPosition.copy(currentPos);
                 }
             }
         });
 
-        function spawnNewMagazine() {
-            // Spawn a new magazine on the chest inside the ammo vest (so it moves with player)
-            const ammoVest = document.querySelector('#ammo-vest');
-            if (!ammoVest) {
-                console.error('Ammo vest not found!');
-                return;
-            }
-            
-            // Alternate between left and right chest positions
-            const magCount = document.querySelectorAll('.magazine').length;
-            const xPos = (magCount % 2 === 0) ? -0.1 : 0.1;
-            
-            const newMag = document.createElement('a-entity');
-            newMag.classList.add('grabbable', 'magazine');
-            newMag.setAttribute('magazine-controller', '');
-            newMag.setAttribute('grabbable', '');
-            newMag.setAttribute('proximity-prompt', '');
-            newMag.setAttribute('position', `${xPos} 0.25 0`); // Relative to ammo-vest
-            
-            const box = document.createElement('a-box');
-            box.setAttribute('width', '0.035');
-            box.setAttribute('height', '0.11');
-            box.setAttribute('depth', '0.06');
-            box.setAttribute('color', '#FFA500');
-            newMag.appendChild(box);
-            
-            ammoVest.appendChild(newMag);
-            
-            console.log('New magazine spawned on chest at position:', xPos);
-        }
-
-        function updateAmmoDisplay() {
-            const ammoStr = `${gameState.currentAmmo}/${gameState.maxAmmo}`;
-            const ammoDisplay = document.querySelector('#ammo-display');
-            const vrAmmo = document.querySelector('#vr-ammo');
-            
-            if (ammoDisplay) {
-                ammoDisplay.textContent = `Ammo: ${ammoStr}`;
-                if (gameState.currentAmmo <= 3) {
-                    ammoDisplay.classList.add('low');
-                } else {
-                    ammoDisplay.classList.remove('low');
-                }
-            }
-            
-            if (vrAmmo) {
-                vrAmmo.setAttribute('value', ammoStr);
-                if (gameState.currentAmmo <= 3) {
-                    vrAmmo.setAttribute('color', '#FF0000');
-                } else {
-                    vrAmmo.setAttribute('color', '#FFD700');
-                }
-            }
-        }
-
-        function shootTarget(target) {
-            if (!gameState.gameActive) return;
-            
-            const points = parseInt(target.getAttribute('data-points')) || 10;
-            gameState.score += points;
-            updateScore();
-            
-            const originalColor = target.getAttribute('color');
-            target.setAttribute('color', '#FFFFFF');
-            
-            target.setAttribute('animation__shoot', {
-                property: 'scale',
-                to: '0.1 0.1 0.1',
-                dur: 150,
-                easing: 'easeInQuad'
-            });
-            
-            setTimeout(() => {
-                target.setAttribute('color', originalColor);
-                target.setAttribute('animation__reset', {
-                    property: 'scale',
-                    to: '1 1 1',
-                    dur: 150,
-                    easing: 'easeOutQuad'
-                });
-            }, 400);
-        }
-
-        function updateScore() {
-            const scoreStr = `Score: ${gameState.score}`;
-            const scoreText = document.querySelector('#scoreText');
-            const scoreDisplay = document.querySelector('#score-display');
-            
-            if (scoreText) scoreText.setAttribute('value', scoreStr);
-            if (scoreDisplay) scoreDisplay.textContent = scoreStr;
-        }
-
-        function startTimer() {
-            timerInterval = setInterval(() => {
-                if (!gameState.gameActive) return;
-                
-                gameState.timeLeft--;
-                updateTimer();
-                
-                if (gameState.timeLeft <= 0) {
-                    endGame();
-                }
-            }, 1000);
-        }
-
-        function updateTimer() {
-            const timeStr = `Time: ${gameState.timeLeft}s`;
-            const timerText = document.querySelector('#timerText');
-            const timerDisplay = document.querySelector('#timer-display');
-            
-            if (timerText) timerText.setAttribute('value', timeStr);
-            if (timerDisplay) timerDisplay.textContent = timeStr;
-            
-            if (gameState.timeLeft <= 10) {
-                if (timerDisplay) timerDisplay.style.color = '#FF0000';
-                if (timerText) timerText.setAttribute('color', '#FF0000');
-            } else if (gameState.timeLeft <= 30) {
-                if (timerDisplay) timerDisplay.style.color = '#FFFF00';
-                if (timerText) timerText.setAttribute('color', '#FFFF00');
-            }
-        }
-
-        function endGame() {
-            gameState.gameActive = false;
-            clearInterval(timerInterval);
-            document.querySelector('#final-score').textContent = `Final Score: ${gameState.score}`;
-            document.querySelector('#game-over').style.display = 'block';
-        }
-
-        window.restartGame = function() {
-            gameState.score = 0;
-            gameState.timeLeft = 60;
-            gameState.gameActive = true;
-            gameState.currentAmmo = 12;
-            document.querySelector('#game-over').style.display = 'none';
-            updateScore();
-            updateAmmoDisplay();
-            updateTimer();
-            const timerDisplay = document.querySelector('#timer-display');
-            const timerText = document.querySelector('#timerText');
-            if (timerDisplay) timerDisplay.style.color = '#00FF00';
-            if (timerText) timerText.setAttribute('color', '#00FF00');
-            startTimer();
-        };
-
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
-            // Add movement to targets
-            const mediumTargets = document.querySelectorAll('.target.medium');
-            const hardTargets = document.querySelectorAll('.target.hard');
-            
-            mediumTargets.forEach(target => {
-                target.setAttribute('random-move', 'speed: 2500; range: 0.4');
-            });
-            
-            hardTargets.forEach(target => {
-                target.setAttribute('random-move', 'speed: 1500; range: 0.6');
-            });
-            
-            startTimer();
-            updateAmmoDisplay();
+            console.log('VR Grabbing Playground loaded!');
+            console.log('Instructions:');
+            console.log('1. Move your hand near any colorful object');
+            console.log('2. Press GRIP button to grab it');
+            console.log('3. Release GRIP to drop or throw it');
+            console.log('4. Try throwing objects at the target on the wall!');
         });
     </script>
 </body>
 </html>
-
