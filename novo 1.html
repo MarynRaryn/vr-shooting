@@ -195,10 +195,10 @@
                     <a-box class="ammo-pouch" position="0.15 0.15 0" width="0.08" height="0.12" depth="0.04" color="#654321"></a-box>
                     
                     <!-- Magazines on chest (grabbable) - inside player body so they move with player -->
-                    <a-entity id="magazine1" class="grabbable magazine" position="-0.1 0.25 0" magazine-controller>
+                    <a-entity id="magazine1" class="grabbable magazine" position="-0.1 0.25 0" magazine-controller grabbable proximity-prompt>
                         <a-box width="0.035" height="0.11" depth="0.06" color="#FFA500"></a-box>
                     </a-entity>
-                    <a-entity id="magazine2" class="grabbable magazine" position="0.1 0.25 0" magazine-controller>
+                    <a-entity id="magazine2" class="grabbable magazine" position="0.1 0.25 0" magazine-controller grabbable proximity-prompt>
                         <a-box width="0.035" height="0.11" depth="0.06" color="#FFA500"></a-box>
                     </a-entity>
                 </a-entity>
@@ -226,7 +226,7 @@
         </a-entity>
 
         <!-- Gun on the floor (grabbable) -->
-        <a-entity id="gun" class="grabbable" position="0 0.8 -1.5" grabbable gun-controller>
+        <a-entity id="gun" class="grabbable" position="0 0.8 -1.5" grabbable proximity-prompt gun-controller>
             <!-- Gun body -->
             <a-box position="0 0 -0.1" width="0.08" height="0.12" depth="0.3" color="#1a1a1a"></a-box>
             <!-- Gun barrel -->
@@ -344,6 +344,81 @@
                 this.grabbed = false;
                 this.grabber = null;
                 this.originalParent = this.el.parentNode;
+                this.nearHand = null;
+            }
+        });
+
+        // Proximity prompt component - shows prompts when hand is near
+        AFRAME.registerComponent('proximity-prompt', {
+            schema: {
+                distance: {type: 'number', default: 0.25}
+            },
+            init: function() {
+                this.checkProximity = this.checkProximity.bind(this);
+            },
+            tick: function() {
+                this.checkProximity();
+            },
+            checkProximity: function() {
+                if (this.el.components.grabbable.grabbed) return;
+                
+                const objPos = this.el.object3D.getWorldPosition(new THREE.Vector3());
+                const leftHand = document.querySelector('#leftHand');
+                const rightHand = document.querySelector('#rightHand');
+                const interactionPrompt = document.querySelector('#interaction-prompt');
+                const vrPrompt = document.querySelector('#vr-prompt');
+                
+                let nearHand = null;
+                let closestDist = this.data.distance;
+                
+                // Check left hand
+                if (leftHand) {
+                    const leftPos = leftHand.object3D.getWorldPosition(new THREE.Vector3());
+                    const leftDist = objPos.distanceTo(leftPos);
+                    if (leftDist < closestDist) {
+                        nearHand = 'left';
+                        closestDist = leftDist;
+                    }
+                }
+                
+                // Check right hand
+                if (rightHand) {
+                    const rightPos = rightHand.object3D.getWorldPosition(new THREE.Vector3());
+                    const rightDist = objPos.distanceTo(rightPos);
+                    if (rightDist < closestDist) {
+                        nearHand = 'right';
+                        closestDist = rightDist;
+                    }
+                }
+                
+                if (nearHand) {
+                    this.el.components.grabbable.nearHand = nearHand;
+                    
+                    // Show prompt
+                    if (this.el.id === 'gun' && !gameState.gunHeld) {
+                        if (interactionPrompt) {
+                            interactionPrompt.textContent = '🔫 Press GRIP to Equip Gun';
+                            interactionPrompt.className = 'gun';
+                            interactionPrompt.style.display = 'block';
+                        }
+                        if (vrPrompt) {
+                            vrPrompt.setAttribute('value', 'GRIP: Equip Gun');
+                            vrPrompt.setAttribute('color', '#FFD700');
+                        }
+                    } else if (this.el.classList.contains('magazine')) {
+                        if (interactionPrompt) {
+                            interactionPrompt.textContent = '📦 Press GRIP to Hold Magazine';
+                            interactionPrompt.className = 'magazine';
+                            interactionPrompt.style.display = 'block';
+                        }
+                        if (vrPrompt) {
+                            vrPrompt.setAttribute('value', 'GRIP: Hold Magazine');
+                            vrPrompt.setAttribute('color', '#FFA500');
+                        }
+                    }
+                } else {
+                    this.el.components.grabbable.nearHand = null;
+                }
             }
         });
 
@@ -454,116 +529,17 @@
                 this.grabbedObject = null;
                 this.el.addEventListener('gripdown', this.grab.bind(this));
                 this.el.addEventListener('gripup', this.release.bind(this));
-                
-                // For VR, use controller raycaster
-                this.el.addEventListener('triggerdown', (evt) => {
-                    // In VR, trigger can also be used for grip-like action
-                });
             },
             grab: function() {
-                // First check center raycaster (what the player is looking at)
-                const centerRay = document.querySelector('#center-ray');
-                if (centerRay && centerRay.components.raycaster) {
-                    const intersections = centerRay.components.raycaster.intersectedEls;
-                    
-                    if (intersections.length > 0) {
-                        const targetObj = intersections[0];
-                        
-                        // Find the grabbable parent
-                        let grabbableObj = targetObj;
-                        while (grabbableObj && !grabbableObj.classList.contains('grabbable')) {
-                            grabbableObj = grabbableObj.parentElement;
-                        }
-                        
-                        if (grabbableObj && grabbableObj.components.grabbable && 
-                            !grabbableObj.components.grabbable.grabbed) {
-                            
-                            this.grabbedObject = grabbableObj;
-                            grabbableObj.components.grabbable.grabbed = true;
-                            grabbableObj.components.grabbable.grabber = this.el;
-                            
-                            // Attach to hand
-                            this.el.appendChild(grabbableObj);
-                            
-                            if (this.data.hand === 'right') {
-                                grabbableObj.setAttribute('position', '0 -0.05 -0.12');
-                                grabbableObj.setAttribute('rotation', '-15 0 0');
-                            } else {
-                                grabbableObj.setAttribute('position', '0 0 -0.1');
-                                grabbableObj.setAttribute('rotation', '0 0 0');
-                            }
-                            
-                            // Check if it's the gun
-                            if (grabbableObj.id === 'gun') {
-                                gameState.gunHeld = true;
-                                gameState.gunHand = this.data.hand;
-                                console.log('Gun grabbed with', this.data.hand, 'hand!');
-                            }
-                            
-                            // Check if it's a magazine
-                            if (grabbableObj.classList.contains('magazine')) {
-                                gameState.heldMagazine = grabbableObj;
-                                gameState.magazineHand = this.data.hand;
-                                console.log('Magazine grabbed with', this.data.hand, 'hand!');
-                            }
-                            
-                            return;
-                        }
-                    }
-                }
-                
-                // Fallback: Use hand raycaster
-                const raycaster = this.el.components.raycaster;
-                if (raycaster && raycaster.intersectedEls.length > 0) {
-                    let pointedObject = raycaster.intersectedEls[0];
-                    
-                    // Find the grabbable parent
-                    while (pointedObject && !pointedObject.classList.contains('grabbable')) {
-                        pointedObject = pointedObject.parentElement;
-                    }
-                    
-                    if (pointedObject && pointedObject.components.grabbable &&
-                        !pointedObject.components.grabbable.grabbed) {
-                        
-                        this.grabbedObject = pointedObject;
-                        pointedObject.components.grabbable.grabbed = true;
-                        pointedObject.components.grabbable.grabber = this.el;
-                        
-                        this.el.appendChild(pointedObject);
-                        
-                        if (this.data.hand === 'right') {
-                            pointedObject.setAttribute('position', '0 -0.05 -0.12');
-                            pointedObject.setAttribute('rotation', '-15 0 0');
-                        } else {
-                            pointedObject.setAttribute('position', '0 0 -0.1');
-                            pointedObject.setAttribute('rotation', '0 0 0');
-                        }
-                        
-                        if (pointedObject.id === 'gun') {
-                            gameState.gunHeld = true;
-                            gameState.gunHand = this.data.hand;
-                            console.log('Gun grabbed!');
-                        }
-                        
-                        if (pointedObject.classList.contains('magazine')) {
-                            gameState.heldMagazine = pointedObject;
-                            gameState.magazineHand = this.data.hand;
-                            console.log('Magazine grabbed!');
-                        }
-                        
-                        return;
-                    }
-                }
-                
-                // Final fallback: proximity grab
+                // Find nearby grabbable objects
                 const handPos = this.el.object3D.getWorldPosition(new THREE.Vector3());
                 const grabbables = document.querySelectorAll('.grabbable');
                 
                 let closest = null;
-                let closestDist = 0.15;
+                let closestDist = 0.25; // Grab range
                 
                 grabbables.forEach(obj => {
-                    if (obj.components.grabbable.grabbed) return;
+                    if (obj.components.grabbable.grabbed) return; // Already grabbed
                     
                     const objPos = obj.object3D.getWorldPosition(new THREE.Vector3());
                     const dist = handPos.distanceTo(objPos);
@@ -575,10 +551,12 @@
                 });
                 
                 if (closest) {
+                    // Grab the object
                     this.grabbedObject = closest;
                     closest.components.grabbable.grabbed = true;
                     closest.components.grabbable.grabber = this.el;
                     
+                    // Attach to hand
                     this.el.appendChild(closest);
                     
                     if (this.data.hand === 'right') {
@@ -589,14 +567,30 @@
                         closest.setAttribute('rotation', '0 0 0');
                     }
                     
+                    // Check if it's the gun
                     if (closest.id === 'gun') {
                         gameState.gunHeld = true;
                         gameState.gunHand = this.data.hand;
+                        console.log('Gun grabbed with', this.data.hand, 'hand!');
+                        
+                        // Hide prompt
+                        const interactionPrompt = document.querySelector('#interaction-prompt');
+                        const vrPrompt = document.querySelector('#vr-prompt');
+                        if (interactionPrompt) interactionPrompt.style.display = 'none';
+                        if (vrPrompt) vrPrompt.setAttribute('value', '');
                     }
                     
+                    // Check if it's a magazine
                     if (closest.classList.contains('magazine')) {
                         gameState.heldMagazine = closest;
                         gameState.magazineHand = this.data.hand;
+                        console.log('Magazine grabbed with', this.data.hand, 'hand!');
+                        
+                        // Hide prompt
+                        const interactionPrompt = document.querySelector('#interaction-prompt');
+                        const vrPrompt = document.querySelector('#vr-prompt');
+                        if (interactionPrompt) interactionPrompt.style.display = 'none';
+                        if (vrPrompt) vrPrompt.setAttribute('value', '');
                     }
                 }
             },
@@ -635,6 +629,8 @@
                 // Auto-reload check when holding magazine near gun
                 if (this.grabbedObject && this.grabbedObject.classList.contains('magazine') && gameState.gunHeld) {
                     const gun = document.querySelector('#gun');
+                    if (!gun) return;
+                    
                     const magPos = this.grabbedObject.object3D.getWorldPosition(new THREE.Vector3());
                     const gunPos = gun.object3D.getWorldPosition(new THREE.Vector3());
                     const distance = magPos.distanceTo(gunPos);
@@ -642,9 +638,16 @@
                     if (distance < 0.2) {
                         // Show reload prompt
                         const vrPrompt = document.querySelector('#vr-prompt');
+                        const interactionPrompt = document.querySelector('#interaction-prompt');
                         if (vrPrompt) {
                             vrPrompt.setAttribute('value', 'RELOADING...');
                             vrPrompt.setAttribute('color', '#00FF00');
+                        }
+                        if (interactionPrompt) {
+                            interactionPrompt.textContent = '✅ RELOADING...';
+                            interactionPrompt.className = '';
+                            interactionPrompt.style.display = 'block';
+                            interactionPrompt.style.color = '#00FF00';
                         }
                     }
                 }
@@ -667,6 +670,7 @@
             newMag.classList.add('grabbable', 'magazine');
             newMag.setAttribute('magazine-controller', '');
             newMag.setAttribute('grabbable', '');
+            newMag.setAttribute('proximity-prompt', '');
             newMag.setAttribute('position', `${xPos} 0.25 0`); // Relative to ammo-vest
             
             const box = document.createElement('a-box');
@@ -797,59 +801,6 @@
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
-            const interactionPrompt = document.querySelector('#interaction-prompt');
-            const vrPrompt = document.querySelector('#vr-prompt');
-            const centerRay = document.querySelector('#center-ray');
-            
-            // Crosshair interaction detection
-            setInterval(() => {
-                if (!centerRay || !centerRay.components.raycaster) return;
-                
-                const intersections = centerRay.components.raycaster.intersectedEls;
-                
-                if (intersections.length > 0) {
-                    let targetObj = intersections[0];
-                    
-                    // Find grabbable parent
-                    while (targetObj && !targetObj.classList.contains('grabbable')) {
-                        targetObj = targetObj.parentElement;
-                    }
-                    
-                    if (targetObj) {
-                        if (targetObj.id === 'gun' && !gameState.gunHeld) {
-                            if (interactionPrompt) {
-                                interactionPrompt.textContent = '🔫 Press GRIP to Equip Gun';
-                                interactionPrompt.className = 'gun';
-                                interactionPrompt.style.display = 'block';
-                            }
-                            if (vrPrompt) {
-                                vrPrompt.setAttribute('value', 'GRIP: Equip Gun');
-                                vrPrompt.setAttribute('color', '#FFD700');
-                            }
-                        } else if (targetObj.classList.contains('magazine') && !targetObj.components.grabbable.grabbed) {
-                            if (interactionPrompt) {
-                                interactionPrompt.textContent = '📦 Press GRIP to Hold Magazine';
-                                interactionPrompt.className = 'magazine';
-                                interactionPrompt.style.display = 'block';
-                            }
-                            if (vrPrompt) {
-                                vrPrompt.setAttribute('value', 'GRIP: Hold Magazine');
-                                vrPrompt.setAttribute('color', '#FFA500');
-                            }
-                        } else {
-                            if (interactionPrompt) interactionPrompt.style.display = 'none';
-                            if (vrPrompt) vrPrompt.setAttribute('value', '');
-                        }
-                    } else {
-                        if (interactionPrompt) interactionPrompt.style.display = 'none';
-                        if (vrPrompt) vrPrompt.setAttribute('value', '');
-                    }
-                } else {
-                    if (interactionPrompt) interactionPrompt.style.display = 'none';
-                    if (vrPrompt) vrPrompt.setAttribute('value', '');
-                }
-            }, 100);
-            
             // Add movement to targets
             const mediumTargets = document.querySelectorAll('.target.medium');
             const hardTargets = document.querySelectorAll('.target.hard');
