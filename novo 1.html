@@ -1,16 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VR Combat Playground with VR Mode</title>
+    <title>VR Playground</title>
     <style>
-        body { 
-            margin: 0; 
-            overflow: hidden; 
-            font-family: Arial, sans-serif;
-            background: #000;
-        }
+        body { margin: 0; overflow: hidden; }
         #info { 
             position: absolute; 
             top: 10px; 
@@ -20,622 +14,537 @@
             padding: 15px; 
             border-radius: 8px; 
             z-index: 100;
-            max-width: 300px;
-        }
-        #score {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            color: white;
-            background: rgba(0,0,0,0.8);
-            padding: 15px;
-            border-radius: 8px;
-            z-index: 100;
-            font-size: 18px;
-        }
-        #error {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(255,0,0,0.9);
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            display: none;
-            z-index: 1000;
         }
     </style>
 </head>
 <body>
-    <div id="info">
-        <strong>🗡️ VR Combat Playground</strong><br>
-        <span id="status">Loading...</span><br>
-        <small>
-        Desktop: Click swords to throw<br>
-        VR: Use trigger to grab swords<br>
-        Hit NPCs to damage them (20 HP)<br>
-        Right-click drag: Rotate | Scroll: Zoom
-        </small>
-    </div>
-    <div id="score">
-        Enemies Defeated: <span id="kills">0</span><br>
-        Active NPCs: <span id="npcsAlive">0</span>
-    </div>
-    <div id="error">Error loading. Press F12 to see console.</div>
+    <div id="info">Loading playground...</div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.159.0/examples/jsm/"
+        }
+    }
+    </script>
 
     <script type="module">
-        try {
-            const statusEl = document.getElementById('status');
-            statusEl.innerHTML = 'Importing libraries...';
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { VRButton } from 'three/addons/webxr/VRButton.js';
+        import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
 
-            import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.js';
-            import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.159.0/examples/jsm/controls/OrbitControls.js';
-            import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.159.0/examples/jsm/webxr/VRButton.js';
-            import { XRControllerModelFactory } from 'https://cdn.jsdelivr.net/npm/three@0.159.0/examples/jsm/webxr/XRControllerModelFactory.js';
+        const info = document.getElementById('info');
+        info.innerHTML = 'Building playground...';
 
-            statusEl.innerHTML = 'Setting up scene...';
+        // Scene
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb);
+        scene.fog = new THREE.Fog(0x87ceeb, 0, 100);
 
-            const scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87ceeb);
-            scene.fog = new THREE.Fog(0x87ceeb, 0, 60);
+        // Camera
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 200);
+        camera.position.set(0, 1.6, 10);
 
-            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
-            camera.position.set(0, 1.6, 8);
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.xr.enabled = true;
+        document.body.appendChild(renderer.domElement);
 
-            const renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            renderer.xr.enabled = true;
-            document.body.appendChild(renderer.domElement);
+        // VR Button
+        document.body.appendChild(VRButton.createButton(renderer));
 
-            // Add VR Button
-            const vrButton = VRButton.createButton(renderer);
-            document.body.appendChild(vrButton);
+        // Controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 1, 0);
+        controls.update();
 
-            const controls = new OrbitControls(camera, renderer.domElement);
-            controls.target.set(0, 1, 0);
-            controls.maxPolarAngle = Math.PI / 2.1;
-            controls.update();
+        // Lights
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+        
+        const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+        sun.position.set(20, 30, 20);
+        sun.castShadow = true;
+        sun.shadow.camera.left = -30;
+        sun.shadow.camera.right = 30;
+        sun.shadow.camera.top = 30;
+        sun.shadow.camera.bottom = -30;
+        sun.shadow.mapSize.width = 2048;
+        sun.shadow.mapSize.height = 2048;
+        scene.add(sun);
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-            scene.add(ambientLight);
+        scene.add(new THREE.HemisphereLight(0x87ceeb, 0x4a7c59, 0.4));
 
-            const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            sunLight.position.set(10, 20, 10);
-            sunLight.castShadow = true;
-            sunLight.shadow.mapSize.width = 2048;
-            sunLight.shadow.mapSize.height = 2048;
-            sunLight.shadow.camera.left = -25;
-            sunLight.shadow.camera.right = 25;
-            sunLight.shadow.camera.top = 25;
-            sunLight.shadow.camera.bottom = -25;
-            scene.add(sunLight);
+        // Ground - colorful grass
+        const ground = new THREE.Mesh(
+            new THREE.PlaneGeometry(100, 100),
+            new THREE.MeshStandardMaterial({ 
+                color: 0x66bb66,
+                roughness: 0.8
+            })
+        );
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
 
-            const ground = new THREE.Mesh(
-                new THREE.PlaneGeometry(60, 60),
-                new THREE.MeshStandardMaterial({ color: 0x4a7c59 })
+        // Add playground equipment
+        info.innerHTML = 'Adding playground equipment...';
+
+        // Slide
+        const slideGroup = new THREE.Group();
+        const slidePlatform = new THREE.Mesh(
+            new THREE.BoxGeometry(3, 0.3, 3),
+            new THREE.MeshStandardMaterial({ color: 0xff6600 })
+        );
+        slidePlatform.position.set(0, 3, 0);
+        slidePlatform.castShadow = true;
+        slideGroup.add(slidePlatform);
+
+        const slideRamp = new THREE.Mesh(
+            new THREE.BoxGeometry(3, 0.3, 5),
+            new THREE.MeshStandardMaterial({ color: 0xffcc00 })
+        );
+        slideRamp.position.set(0, 1.5, 3.5);
+        slideRamp.rotation.x = -0.5;
+        slideRamp.castShadow = true;
+        slideGroup.add(slideRamp);
+
+        // Slide supports
+        for (let i = 0; i < 4; i++) {
+            const support = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.15, 0.15, 3, 8),
+                new THREE.MeshStandardMaterial({ color: 0x8b4513 })
             );
-            ground.rotation.x = -Math.PI / 2;
-            ground.receiveShadow = true;
-            scene.add(ground);
+            const x = i < 2 ? -1.3 : 1.3;
+            const z = i % 2 === 0 ? -1.3 : 1.3;
+            support.position.set(x, 1.5, z);
+            support.castShadow = true;
+            slideGroup.add(support);
+        }
+        slideGroup.position.set(-10, 0, -10);
+        scene.add(slideGroup);
 
-            const gridHelper = new THREE.GridHelper(60, 60, 0x000000, 0x000000);
-            gridHelper.material.opacity = 0.15;
-            gridHelper.material.transparent = true;
-            scene.add(gridHelper);
+        // Swing set
+        const swingSet = new THREE.Group();
+        
+        // Frame
+        const frameTop = new THREE.Mesh(
+            new THREE.BoxGeometry(8, 0.3, 0.3),
+            new THREE.MeshStandardMaterial({ color: 0x8b4513 })
+        );
+        frameTop.position.y = 4;
+        frameTop.castShadow = true;
+        swingSet.add(frameTop);
 
-            const physicsObjects = [];
-            const npcs = [];
-            let draggedObject = null;
-            let killCount = 0;
+        // Posts
+        for (let i = 0; i < 2; i++) {
+            const post = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.2, 0.2, 4, 8),
+                new THREE.MeshStandardMaterial({ color: 0x8b4513 })
+            );
+            post.position.set(i === 0 ? -3.8 : 3.8, 2, 0);
+            post.castShadow = true;
+            swingSet.add(post);
+        }
 
-            class PhysicsObject {
-                constructor(mesh, type = 'object') {
-                    this.mesh = mesh;
-                    this.type = type;
-                    this.velocity = new THREE.Vector3();
-                    this.angularVelocity = new THREE.Vector3();
-                    this.isGrabbed = false;
-                    this.lastHitTime = 0;
-                    this.grabbedByController = null;
-                    physicsObjects.push(this);
-                }
+        // Swings
+        for (let i = 0; i < 3; i++) {
+            const seat = new THREE.Mesh(
+                new THREE.BoxGeometry(0.6, 0.1, 0.4),
+                new THREE.MeshStandardMaterial({ color: 0xff0000 })
+            );
+            seat.position.set(-2.5 + i * 2.5, 1.5, 0);
+            seat.castShadow = true;
+            swingSet.add(seat);
 
-                update(deltaTime) {
-                    if (this.isGrabbed) return;
-                    
-                    this.velocity.y += -9.8 * deltaTime;
-                    this.mesh.position.addScaledVector(this.velocity, deltaTime);
-                    
-                    const angle = this.angularVelocity.length() * deltaTime;
-                    if (angle > 0) {
-                        const axis = this.angularVelocity.clone().normalize();
-                        this.mesh.rotateOnWorldAxis(axis, angle);
-                    }
-                    
-                    if (this.mesh.position.y < 0.75) {
-                        this.mesh.position.y = 0.75;
-                        this.velocity.y = Math.abs(this.velocity.y) * 0.4;
-                        this.velocity.x *= 0.7;
-                        this.velocity.z *= 0.7;
-                        this.angularVelocity.multiplyScalar(0.7);
-                    }
-                    
-                    this.velocity.multiplyScalar(0.98);
-                    this.angularVelocity.multiplyScalar(0.95);
-                }
-
-                grab(controller = null) { 
-                    this.isGrabbed = true; 
-                    this.velocity.set(0, 0, 0); 
-                    this.angularVelocity.set(0, 0, 0);
-                    this.grabbedByController = controller;
-                }
-                
-                release(throwVelocity) { 
-                    this.isGrabbed = false; 
-                    this.velocity.copy(throwVelocity);
-                    this.angularVelocity.set(
-                        (Math.random() - 0.5) * 5,
-                        (Math.random() - 0.5) * 5,
-                        (Math.random() - 0.5) * 5
-                    );
-                    this.grabbedByController = null;
-                }
-            }
-
-            class NPC {
-                constructor(x, z, color, name) {
-                    this.group = new THREE.Group();
-                    this.health = 100;
-                    this.color = color;
-                    this.name = name;
-                    this.isDead = false;
-                    
-                    this.bodyMaterial = new THREE.MeshStandardMaterial({ color });
-                    this.body = new THREE.Mesh(
-                        new THREE.CylinderGeometry(0.3, 0.35, 1.2, 12),
-                        this.bodyMaterial
-                    );
-                    this.body.position.y = 1;
-                    this.body.castShadow = true;
-                    this.group.add(this.body);
-                    
-                    const head = new THREE.Mesh(
-                        new THREE.SphereGeometry(0.28, 16, 16),
-                        new THREE.MeshStandardMaterial({ color: 0xffdbac })
-                    );
-                    head.position.y = 1.8;
-                    head.castShadow = true;
-                    this.group.add(head);
-                    
-                    const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
-                    const leftEye = new THREE.Mesh(new THREE.SphereGeometry(0.06), eyeMaterial);
-                    leftEye.position.set(-0.12, 1.85, 0.22);
-                    this.group.add(leftEye);
-                    
-                    const rightEye = leftEye.clone();
-                    rightEye.position.x = 0.12;
-                    this.group.add(rightEye);
-                    
-                    this.leftArm = new THREE.Mesh(
-                        new THREE.CylinderGeometry(0.12, 0.1, 0.9, 8),
-                        new THREE.MeshStandardMaterial({ color })
-                    );
-                    this.leftArm.position.set(-0.45, 1.1, 0);
-                    this.leftArm.rotation.z = 0.4;
-                    this.leftArm.castShadow = true;
-                    this.group.add(this.leftArm);
-                    
-                    this.rightArm = this.leftArm.clone();
-                    this.rightArm.material = this.leftArm.material.clone();
-                    this.rightArm.position.x = 0.45;
-                    this.rightArm.rotation.z = -0.4;
-                    this.group.add(this.rightArm);
-                    
-                    this.healthBarGroup = new THREE.Group();
-                    const healthBg = new THREE.Mesh(
-                        new THREE.PlaneGeometry(0.7, 0.12),
-                        new THREE.MeshBasicMaterial({ color: 0x333333 })
-                    );
-                    this.healthBarGroup.add(healthBg);
-                    
-                    this.healthBar = new THREE.Mesh(
-                        new THREE.PlaneGeometry(0.66, 0.1),
-                        new THREE.MeshBasicMaterial({ color: 0x00ff00 })
-                    );
-                    this.healthBar.position.z = 0.01;
-                    this.healthBarGroup.add(this.healthBar);
-                    this.healthBarGroup.position.y = 2.4;
-                    this.group.add(this.healthBarGroup);
-                    
-                    this.group.position.set(x, 0, z);
-                    scene.add(this.group);
-                    
-                    this.time = Math.random() * 100;
-                    this.walkSpeed = 0.4 + Math.random() * 0.3;
-                    this.direction = Math.random() * Math.PI * 2;
-                    this.targetDirection = this.direction;
-                    
-                    npcs.push(this);
-                    updateNPCCount();
-                }
-
-                takeDamage(amount) {
-                    if (this.isDead) return;
-                    
-                    this.health -= amount;
-                    if (this.health < 0) this.health = 0;
-                    
-                    const healthPercent = this.health / 100;
-                    this.healthBar.scale.x = healthPercent;
-                    this.healthBar.position.x = -0.33 * (1 - healthPercent);
-                    
-                    if (healthPercent > 0.6) {
-                        this.healthBar.material.color.setHex(0x00ff00);
-                    } else if (healthPercent > 0.3) {
-                        this.healthBar.material.color.setHex(0xffaa00);
-                    } else {
-                        this.healthBar.material.color.setHex(0xff0000);
-                    }
-                    
-                    if (this.health <= 0) {
-                        this.die();
-                    } else {
-                        this.bodyMaterial.color.setHex(0xffffff);
-                        setTimeout(() => {
-                            this.bodyMaterial.color.setHex(this.color);
-                        }, 150);
-                    }
-                }
-
-                die() {
-                    this.isDead = true;
-                    killCount++;
-                    document.getElementById('kills').innerHTML = killCount;
-                    
-                    this.group.rotation.x = Math.PI / 2;
-                    this.healthBarGroup.visible = false;
-                    
-                    setTimeout(() => {
-                        scene.remove(this.group);
-                        npcs.splice(npcs.indexOf(this), 1);
-                        updateNPCCount();
-                        setTimeout(() => spawnRandomNPC(), 3000);
-                    }, 2000);
-                }
-
-                update(deltaTime) {
-                    if (this.isDead) return;
-                    
-                    this.time += deltaTime;
-                    this.leftArm.rotation.x = Math.sin(this.time * 3) * 0.4;
-                    this.rightArm.rotation.x = -Math.sin(this.time * 3) * 0.4;
-                    this.group.position.y = Math.abs(Math.sin(this.time * 5)) * 0.08;
-                    
-                    const dirDiff = this.targetDirection - this.direction;
-                    this.direction += dirDiff * 0.05;
-                    
-                    this.group.position.x += Math.cos(this.direction) * this.walkSpeed * deltaTime;
-                    this.group.position.z += Math.sin(this.direction) * this.walkSpeed * deltaTime;
-                    
-                    if (Math.abs(this.group.position.x) > 25 || Math.abs(this.group.position.z) > 25) {
-                        this.targetDirection += Math.PI;
-                    }
-                    
-                    if (Math.random() < 0.015) {
-                        this.targetDirection += (Math.random() - 0.5) * Math.PI;
-                    }
-                    
-                    this.group.rotation.y = this.direction + Math.PI / 2;
-                    this.healthBarGroup.quaternion.copy(camera.quaternion);
-                }
-            }
-
-            function createSword(x, y, z, bladeColor, handleColor) {
-                const swordGroup = new THREE.Group();
-                
-                const blade = new THREE.Mesh(
-                    new THREE.BoxGeometry(0.12, 1.8, 0.06),
-                    new THREE.MeshStandardMaterial({ 
-                        color: bladeColor,
-                        metalness: 0.9,
-                        roughness: 0.1
-                    })
+            // Chains
+            for (let j = 0; j < 2; j++) {
+                const chain = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.03, 0.03, 2.5, 6),
+                    new THREE.MeshStandardMaterial({ color: 0x444444 })
                 );
-                blade.position.y = 0.9;
-                blade.castShadow = true;
-                swordGroup.add(blade);
+                chain.position.set(-2.5 + i * 2.5 + (j === 0 ? -0.2 : 0.2), 2.75, 0);
+                swingSet.add(chain);
+            }
+        }
+        swingSet.position.set(10, 0, -10);
+        scene.add(swingSet);
+
+        // Merry-go-round
+        const merryGoRound = new THREE.Group();
+        const platform = new THREE.Mesh(
+            new THREE.CylinderGeometry(2.5, 2.5, 0.3, 32),
+            new THREE.MeshStandardMaterial({ color: 0xff00ff })
+        );
+        platform.position.y = 0.15;
+        platform.castShadow = true;
+        merryGoRound.add(platform);
+
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const handle = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.08, 0.08, 1, 8),
+                new THREE.MeshStandardMaterial({ color: 0xffff00 })
+            );
+            handle.position.set(Math.cos(angle) * 2, 0.65, Math.sin(angle) * 2);
+            handle.castShadow = true;
+            merryGoRound.add(handle);
+        }
+        merryGoRound.position.set(0, 0, -10);
+        scene.add(merryGoRound);
+
+        // Sandbox
+        const sandbox = new THREE.Mesh(
+            new THREE.BoxGeometry(6, 0.5, 6),
+            new THREE.MeshStandardMaterial({ color: 0xf4a460 })
+        );
+        sandbox.position.set(-10, 0.25, 10);
+        sandbox.castShadow = true;
+        scene.add(sandbox);
+
+        // Sandbox border
+        const borderMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+        for (let i = 0; i < 4; i++) {
+            const border = new THREE.Mesh(
+                new THREE.BoxGeometry(i % 2 === 0 ? 6.5 : 0.3, 0.3, i % 2 === 0 ? 0.3 : 6.5),
+                borderMaterial
+            );
+            const x = i === 1 ? 3.25 : i === 3 ? -3.25 : 0;
+            const z = i === 0 ? 3.25 : i === 2 ? -3.25 : 0;
+            border.position.set(-10 + x, 0.5, 10 + z);
+            border.castShadow = true;
+            scene.add(border);
+        }
+
+        // Monkey bars
+        const monkeyBars = new THREE.Group();
+        for (let i = 0; i < 2; i++) {
+            const post = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.2, 0.2, 3, 8),
+                new THREE.MeshStandardMaterial({ color: 0x8b4513 })
+            );
+            post.position.set(i === 0 ? -3 : 3, 1.5, 0);
+            post.castShadow = true;
+            monkeyBars.add(post);
+        }
+
+        const topBar = new THREE.Mesh(
+            new THREE.BoxGeometry(6.5, 0.2, 0.2),
+            new THREE.MeshStandardMaterial({ color: 0x8b4513 })
+        );
+        topBar.position.y = 3;
+        topBar.castShadow = true;
+        monkeyBars.add(topBar);
+
+        for (let i = 0; i < 10; i++) {
+            const rung = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.08, 0.08, 0.6, 8),
+                new THREE.MeshStandardMaterial({ color: 0xffff00 })
+            );
+            rung.position.set(-2.5 + i * 0.6, 3, 0);
+            rung.rotation.z = Math.PI / 2;
+            rung.castShadow = true;
+            monkeyBars.add(rung);
+        }
+        monkeyBars.position.set(10, 0, 10);
+        scene.add(monkeyBars);
+
+        // Seesaw
+        const seesaw = new THREE.Group();
+        const base = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.4, 0.4, 0.5, 8),
+            new THREE.MeshStandardMaterial({ color: 0x8b4513 })
+        );
+        base.position.y = 0.25;
+        base.castShadow = true;
+        seesaw.add(base);
+
+        const plank = new THREE.Mesh(
+            new THREE.BoxGeometry(6, 0.2, 0.6),
+            new THREE.MeshStandardMaterial({ color: 0xff6600 })
+        );
+        plank.position.y = 0.5;
+        plank.castShadow = true;
+        seesaw.add(plank);
+
+        for (let i = 0; i < 2; i++) {
+            const seat = new THREE.Mesh(
+                new THREE.BoxGeometry(0.5, 0.5, 0.5),
+                new THREE.MeshStandardMaterial({ color: 0x00ff00 })
+            );
+            seat.position.set(i === 0 ? -2.5 : 2.5, 0.75, 0);
+            seat.castShadow = true;
+            seesaw.add(seat);
+        }
+        seesaw.position.set(0, 0, 10);
+        scene.add(seesaw);
+
+        // Create throwable objects
+        info.innerHTML = 'Adding toys...';
+        const physicsObjects = [];
+        const npcs = [];
+        let draggedObject = null;
+
+        class PhysicsObject {
+            constructor(mesh) {
+                this.mesh = mesh;
+                this.velocity = new THREE.Vector3();
+                this.isGrabbed = false;
+                physicsObjects.push(this);
+            }
+
+            update(dt) {
+                if (this.isGrabbed) return;
+                this.velocity.y += -9.8 * dt;
+                this.mesh.position.addScaledVector(this.velocity, dt);
                 
-                const handle = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.1, 0.1, 0.5, 12),
-                    new THREE.MeshStandardMaterial({ color: handleColor })
+                if (this.mesh.position.y < 0.3) {
+                    this.mesh.position.y = 0.3;
+                    this.velocity.y = Math.abs(this.velocity.y) * 0.4;
+                    this.velocity.x *= 0.8;
+                    this.velocity.z *= 0.8;
+                }
+                this.velocity.multiplyScalar(0.98);
+            }
+
+            grab() { 
+                this.isGrabbed = true; 
+                this.velocity.set(0, 0, 0); 
+            }
+            
+            release(vel) { 
+                this.isGrabbed = false; 
+                this.velocity.copy(vel); 
+            }
+        }
+
+        // Balls
+        for (let i = 0; i < 8; i++) {
+            const ball = new THREE.Mesh(
+                new THREE.SphereGeometry(0.3, 16, 16),
+                new THREE.MeshStandardMaterial({ 
+                    color: [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff, 0x00ffff, 0xff8800, 0x88ff00][i]
+                })
+            );
+            ball.position.set(-8 + i * 2, 1, 0);
+            ball.castShadow = true;
+            scene.add(ball);
+            new PhysicsObject(ball);
+        }
+
+        // NPCs
+        class NPC {
+            constructor(x, z, color) {
+                this.group = new THREE.Group();
+                this.health = 100;
+                this.color = color;
+                
+                const body = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.3, 0.3, 1.2, 8),
+                    new THREE.MeshStandardMaterial({ color })
                 );
-                handle.castShadow = true;
-                swordGroup.add(handle);
+                body.position.y = 1;
+                body.castShadow = true;
+                this.body = body;
+                this.group.add(body);
                 
-                const guard = new THREE.Mesh(
-                    new THREE.BoxGeometry(0.5, 0.08, 0.12),
-                    new THREE.MeshStandardMaterial({ color: 0x8b7355 })
+                const head = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.25, 16, 16),
+                    new THREE.MeshStandardMaterial({ color: 0xffdbac })
                 );
-                guard.position.y = 0.25;
-                swordGroup.add(guard);
+                head.position.y = 1.7;
+                head.castShadow = true;
+                this.group.add(head);
                 
-                swordGroup.position.set(x, y, z);
-                scene.add(swordGroup);
-                
-                return new PhysicsObject(swordGroup, 'sword');
-            }
-
-            function spawnRandomNPC() {
-                const colors = [0xff0000, 0x0000ff, 0x00ff00, 0xffff00, 0xff00ff, 0x00ffff];
-                const names = ['Bob', 'Alice', 'Charlie', 'Diana', 'Eve', 'Frank'];
-                const angle = Math.random() * Math.PI * 2;
-                const distance = 15 + Math.random() * 8;
-                const x = Math.cos(angle) * distance;
-                const z = Math.sin(angle) * distance;
-                const color = colors[Math.floor(Math.random() * colors.length)];
-                const name = names[Math.floor(Math.random() * names.length)];
-                new NPC(x, z, color, name);
-            }
-
-            function updateNPCCount() {
-                document.getElementById('npcsAlive').innerHTML = npcs.length;
-            }
-
-            statusEl.innerHTML = 'Spawning NPCs...';
-            for (let i = 0; i < 6; i++) {
-                spawnRandomNPC();
-            }
-
-            statusEl.innerHTML = 'Creating swords...';
-            createSword(-3, 1.5, 0, 0xff0000, 0x8b0000);
-            createSword(3, 1.5, 0, 0x0000ff, 0x000088);
-            createSword(0, 1.5, -3, 0x00ff00, 0x008800);
-            createSword(0, 1.5, 3, 0xffff00, 0x888800);
-            createSword(-2, 1.5, -2, 0xff00ff, 0x880088);
-            createSword(2, 1.5, 2, 0x00ffff, 0x008888);
-
-            function checkSwordCollisions() {
-                const currentTime = Date.now();
-                physicsObjects.forEach(obj => {
-                    if (obj.type === 'sword' && obj.velocity.length() > 2.5) {
-                        npcs.forEach(npc => {
-                            if (!npc.isDead) {
-                                const distance = obj.mesh.position.distanceTo(npc.group.position);
-                                if (distance < 1.2 && currentTime - obj.lastHitTime > 300) {
-                                    npc.takeDamage(20);
-                                    obj.lastHitTime = currentTime;
-                                }
-                            }
-                        });
-                    }
-                });
-            }
-
-            // VR CONTROLLERS
-            const controllerModelFactory = new XRControllerModelFactory();
-            const vrControllers = [];
-
-            for (let i = 0; i < 2; i++) {
-                const controller = renderer.xr.getController(i);
-                controller.userData.grabbed = null;
-                controller.userData.previousPosition = new THREE.Vector3();
-                controller.userData.velocity = new THREE.Vector3();
-                
-                controller.addEventListener('selectstart', onVRSelectStart);
-                controller.addEventListener('selectend', onVRSelectEnd);
-                
-                scene.add(controller);
-
-                const grip = renderer.xr.getControllerGrip(i);
-                grip.add(controllerModelFactory.createControllerModel(grip));
-                scene.add(grip);
-
-                const line = new THREE.Line(
-                    new THREE.BufferGeometry().setFromPoints([
-                        new THREE.Vector3(0, 0, 0),
-                        new THREE.Vector3(0, 0, -1)
-                    ]),
-                    new THREE.LineBasicMaterial({ color: 0xffffff })
+                const leftEye = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.05),
+                    new THREE.MeshStandardMaterial({ color: 0x000000 })
                 );
-                line.scale.z = 5;
-                controller.add(line);
-
-                vrControllers.push(controller);
+                leftEye.position.set(-0.1, 1.75, 0.2);
+                this.group.add(leftEye);
+                
+                const rightEye = leftEye.clone();
+                rightEye.position.x = 0.1;
+                this.group.add(rightEye);
+                
+                this.leftArm = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.1, 0.1, 0.8, 8),
+                    new THREE.MeshStandardMaterial({ color })
+                );
+                this.leftArm.position.set(-0.4, 1, 0);
+                this.leftArm.rotation.z = 0.3;
+                this.group.add(this.leftArm);
+                
+                this.rightArm = this.leftArm.clone();
+                this.rightArm.material = this.leftArm.material.clone();
+                this.rightArm.position.x = 0.4;
+                this.rightArm.rotation.z = -0.3;
+                this.group.add(this.rightArm);
+                
+                this.group.position.set(x, 0, z);
+                scene.add(this.group);
+                
+                this.time = Math.random() * 100;
+                this.direction = Math.random() * Math.PI * 2;
+                npcs.push(this);
             }
 
-            function onVRSelectStart(event) {
-                const controller = event.target;
+            update(dt) {
+                this.time += dt;
+                this.leftArm.rotation.x = Math.sin(this.time * 3) * 0.4;
+                this.rightArm.rotation.x = -Math.sin(this.time * 3) * 0.4;
+                this.group.position.y = Math.abs(Math.sin(this.time * 5)) * 0.08;
+                
+                this.group.position.x += Math.cos(this.direction) * 0.5 * dt;
+                this.group.position.z += Math.sin(this.direction) * 0.5 * dt;
+                
+                if (Math.abs(this.group.position.x) > 30 || Math.abs(this.group.position.z) > 30) {
+                    this.direction += Math.PI;
+                }
+                
+                if (Math.random() < 0.01) {
+                    this.direction += (Math.random() - 0.5) * 1;
+                }
+                
+                this.group.rotation.y = this.direction;
+            }
+        }
+
+        // Spawn NPCs
+        for (let i = 0; i < 5; i++) {
+            const angle = (i / 5) * Math.PI * 2;
+            new NPC(Math.cos(angle) * 15, Math.sin(angle) * 15, [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff][i]);
+        }
+
+        // VR Controllers
+        const controllerModelFactory = new XRControllerModelFactory();
+        const controllers = [];
+
+        for (let i = 0; i < 2; i++) {
+            const controller = renderer.xr.getController(i);
+            controller.userData.grabbed = null;
+            
+            controller.addEventListener('selectstart', (e) => {
+                const raycaster = new THREE.Raycaster();
                 const tempMatrix = new THREE.Matrix4();
                 controller.updateMatrixWorld();
                 tempMatrix.identity().extractRotation(controller.matrixWorld);
-
-                const raycaster = new THREE.Raycaster();
                 raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
                 raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
-
-                const intersects = raycaster.intersectObjects(physicsObjects.map(obj => obj.mesh), true);
-
+                
+                const intersects = raycaster.intersectObjects(physicsObjects.map(o => o.mesh));
                 if (intersects.length > 0) {
-                    let parentObj = intersects[0].object;
-                    while (parentObj.parent && !parentObj.parent.isScene) {
-                        parentObj = parentObj.parent;
-                    }
-                    
-                    const physicsObj = physicsObjects.find(obj => obj.mesh === parentObj);
-                    
-                    if (physicsObj && !physicsObj.isGrabbed) {
-                        physicsObj.grab(controller);
-                        controller.userData.grabbed = physicsObj;
-                        controller.attach(parentObj);
+                    const obj = physicsObjects.find(o => o.mesh === intersects[0].object);
+                    if (obj) {
+                        obj.grab();
+                        controller.userData.grabbed = obj;
+                        controller.attach(obj.mesh);
                     }
                 }
-            }
-
-            function onVRSelectEnd(event) {
-                const controller = event.target;
-                
+            });
+            
+            controller.addEventListener('selectend', (e) => {
                 if (controller.userData.grabbed) {
-                    const physicsObj = controller.userData.grabbed;
-                    const object = physicsObj.mesh;
-                    
-                    scene.attach(object);
-                    
-                    const throwVelocity = controller.userData.velocity.clone().multiplyScalar(3);
-                    physicsObj.release(throwVelocity);
-                    
+                    const obj = controller.userData.grabbed;
+                    scene.attach(obj.mesh);
+                    obj.release(new THREE.Vector3(0, 2, -5));
                     controller.userData.grabbed = null;
                 }
-            }
-
-            // DESKTOP MOUSE CONTROLS
-            const raycaster = new THREE.Raycaster();
-            const mouse = new THREE.Vector2();
-            let dragPlane = new THREE.Plane();
-            let dragOffset = new THREE.Vector3();
-            let previousMousePosition = new THREE.Vector2();
-            let mouseVelocity = new THREE.Vector2();
-
-            renderer.domElement.addEventListener('mousedown', onMouseDown);
-            renderer.domElement.addEventListener('mousemove', onMouseMove);
-            renderer.domElement.addEventListener('mouseup', onMouseUp);
-
-            function onMouseDown(event) {
-                if (event.button !== 0) return;
-                
-                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-                
-                raycaster.setFromCamera(mouse, camera);
-                const intersects = raycaster.intersectObjects(
-                    physicsObjects.map(obj => obj.mesh), 
-                    true
-                );
-                
-                if (intersects.length > 0) {
-                    controls.enabled = false;
-                    
-                    let parentObj = intersects[0].object;
-                    while (parentObj.parent && !parentObj.parent.isScene) {
-                        parentObj = parentObj.parent;
-                    }
-                    
-                    const physicsObj = physicsObjects.find(obj => obj.mesh === parentObj);
-                    
-                    if (physicsObj) {
-                        draggedObject = physicsObj;
-                        physicsObj.grab();
-                        
-                        const cameraDirection = new THREE.Vector3();
-                        camera.getWorldDirection(cameraDirection);
-                        dragPlane.setFromNormalAndCoplanarPoint(
-                            cameraDirection, 
-                            physicsObj.mesh.position
-                        );
-                        
-                        const intersection = new THREE.Vector3();
-                        raycaster.ray.intersectPlane(dragPlane, intersection);
-                        dragOffset.subVectors(physicsObj.mesh.position, intersection);
-                    }
-                }
-                
-                previousMousePosition.set(event.clientX, event.clientY);
-            }
-
-            function onMouseMove(event) {
-                if (draggedObject) {
-                    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-                    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-                    
-                    raycaster.setFromCamera(mouse, camera);
-                    
-                    const intersection = new THREE.Vector3();
-                    raycaster.ray.intersectPlane(dragPlane, intersection);
-                    draggedObject.mesh.position.copy(intersection.add(dragOffset));
-                    
-                    mouseVelocity.set(
-                        event.clientX - previousMousePosition.x,
-                        event.clientY - previousMousePosition.y
-                    );
-                    previousMousePosition.set(event.clientX, event.clientY);
-                }
-            }
-
-            function onMouseUp(event) {
-                if (draggedObject) {
-                    const throwVelocity = new THREE.Vector3(
-                        mouseVelocity.x * 0.08,
-                        -mouseVelocity.y * 0.08,
-                        0
-                    );
-                    
-                    const cameraRight = new THREE.Vector3();
-                    const cameraUp = new THREE.Vector3();
-                    camera.getWorldDirection(cameraRight);
-                    cameraUp.copy(camera.up);
-                    cameraRight.cross(cameraUp).normalize();
-                    
-                    const worldVelocity = new THREE.Vector3();
-                    worldVelocity.addScaledVector(cameraRight, throwVelocity.x);
-                    worldVelocity.addScaledVector(cameraUp, throwVelocity.y);
-                    
-                    draggedObject.release(worldVelocity);
-                    draggedObject = null;
-                    controls.enabled = true;
-                }
-            }
-
-            const clock = new THREE.Clock();
-            statusEl.innerHTML = 'Ready! Desktop: Click swords | VR: Press Enter VR button';
-
-            function animate() {
-                const deltaTime = Math.min(clock.getDelta(), 0.1);
-
-                // Update VR controller velocities
-                vrControllers.forEach(controller => {
-                    const currentPosition = new THREE.Vector3();
-                    currentPosition.setFromMatrixPosition(controller.matrixWorld);
-                    
-                    if (deltaTime > 0) {
-                        controller.userData.velocity.subVectors(
-                            currentPosition, 
-                            controller.userData.previousPosition
-                        ).divideScalar(deltaTime);
-                    }
-                    
-                    controller.userData.previousPosition.copy(currentPosition);
-                });
-                
-                physicsObjects.forEach(obj => obj.update(deltaTime));
-                npcs.forEach(npc => npc.update(deltaTime));
-                checkSwordCollisions();
-                
-                if (!renderer.xr.isPresenting) {
-                    controls.update();
-                }
-                
-                renderer.render(scene, camera);
-            }
-
-            renderer.setAnimationLoop(animate);
-
-            window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
             });
-
-            console.log('✅ Game loaded successfully!');
-
-        } catch (error) {
-            document.getElementById('error').style.display = 'block';
-            document.getElementById('error').innerHTML = 'Error: ' + error.message + '<br>Check console (F12)';
-            console.error('Error loading game:', error);
+            
+            scene.add(controller);
+            
+            const grip = renderer.xr.getControllerGrip(i);
+            grip.add(controllerModelFactory.createControllerModel(grip));
+            scene.add(grip);
+            
+            controllers.push(controller);
         }
+
+        // Mouse controls
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let dragPlane = new THREE.Plane();
+        let dragOffset = new THREE.Vector3();
+        let prevMouse = new THREE.Vector2();
+        let mouseVel = new THREE.Vector2();
+
+        renderer.domElement.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const hits = raycaster.intersectObjects(physicsObjects.map(o => o.mesh));
+            if (hits.length > 0) {
+                controls.enabled = false;
+                const obj = physicsObjects.find(o => o.mesh === hits[0].object);
+                if (obj) {
+                    draggedObject = obj;
+                    obj.grab();
+                    const dir = new THREE.Vector3();
+                    camera.getWorldDirection(dir);
+                    dragPlane.setFromNormalAndCoplanarPoint(dir, obj.mesh.position);
+                    const pt = new THREE.Vector3();
+                    raycaster.ray.intersectPlane(dragPlane, pt);
+                    dragOffset.subVectors(obj.mesh.position, pt);
+                }
+            }
+            prevMouse.set(e.clientX, e.clientY);
+        });
+
+        renderer.domElement.addEventListener('mousemove', (e) => {
+            if (draggedObject) {
+                mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+                const pt = new THREE.Vector3();
+                raycaster.ray.intersectPlane(dragPlane, pt);
+                draggedObject.mesh.position.copy(pt.add(dragOffset));
+                mouseVel.set(e.clientX - prevMouse.x, e.clientY - prevMouse.y);
+                prevMouse.set(e.clientX, e.clientY);
+            }
+        });
+
+        renderer.domElement.addEventListener('mouseup', () => {
+            if (draggedObject) {
+                const v = new THREE.Vector3(mouseVel.x * 0.05, -mouseVel.y * 0.05, 0);
+                const right = new THREE.Vector3();
+                const up = new THREE.Vector3();
+                camera.getWorldDirection(right);
+                up.copy(camera.up);
+                right.cross(up).normalize();
+                const worldV = new THREE.Vector3();
+                worldV.addScaledVector(right, v.x);
+                worldV.addScaledVector(up, v.y);
+                draggedObject.release(worldV);
+                draggedObject = null;
+                controls.enabled = true;
+            }
+        });
+
+        // Animate
+        const clock = new THREE.Clock();
+        info.innerHTML = '✅ Ready! Desktop: Click balls | VR: Use trigger';
+
+        function animate() {
+            const dt = Math.min(clock.getDelta(), 0.1);
+            physicsObjects.forEach(o => o.update(dt));
+            npcs.forEach(n => n.update(dt));
+            if (!renderer.xr.isPresenting) controls.update();
+            renderer.render(scene, camera);
+        }
+
+        renderer.setAnimationLoop(animate);
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
     </script>
 </body>
 </html>
