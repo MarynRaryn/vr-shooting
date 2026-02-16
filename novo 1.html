@@ -1,279 +1,241 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>VR Grab Debug - Make Objects VISIBLE!</title>
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-physics-system@v4.0.1/dist/aframe-physics-system.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VR Playground with Physics</title>
     <style>
-        body { margin: 0; }
-        #debug {
-            position: fixed; top: 10px; left: 10px;
-            color: white; background: rgba(0,0,0,0.8);
-            padding: 15px; font-family: monospace; z-index: 9999;
-            font-size: 14px; line-height: 1.5;
-        }
+        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
+        #info { position: absolute; top: 10px; left: 10px; color: white; background: rgba(0,0,0,0.7); padding: 15px; border-radius: 8px; z-index: 100; }
+        #vrButton { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 12px 24px; background: #1a73e8; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; z-index: 100; }
+        #vrButton:hover { background: #1557b0; }
     </style>
 </head>
 <body>
-    <div id="debug">
-        <div>Status: Ready</div>
-        <div id="leftStatus">Left Hand: Empty</div>
-        <div id="rightStatus">Right Hand: Empty</div>
-        <div id="positions">Positions: -</div>
+    <div id="info">
+        <strong>VR Playground</strong><br>
+        Put on your VR headset and click Enter VR<br>
+        Use controllers to grab and throw objects!<br>
+        Trigger button to grab objects
     </div>
+    <button id="vrButton">Enter VR</button>
+    <script type="module">
+        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.js';
+        import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.159.0/examples/jsm/webxr/VRButton.js';
+        import { XRControllerModelFactory } from 'https://cdn.jsdelivr.net/npm/three@0.159.0/examples/jsm/webxr/XRControllerModelFactory.js';
 
-    <a-scene physics="debug: true; gravity: -9.8">
-        <a-sky color="#87CEEB"></a-sky>
-        <a-plane position="0 0 0" rotation="-90 0 0" width="50" height="50" color="#7BC8A4" static-body></a-plane>
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb);
+        scene.fog = new THREE.Fog(0x87ceeb, 0, 50);
 
-        <a-light type="ambient" color="#FFF" intensity="1"></a-light>
-        <a-light type="directional" intensity="1" position="2 4 2"></a-light>
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 1.6, 3);
 
-        <!-- Player -->
-        <a-entity id="rig" position="0 0 0" movement-controls="speed: 0.3">
-            <a-camera position="0 1.6 0" look-controls></a-camera>
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.xr.enabled = true;
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
 
-            <!-- LEFT HAND - Visual debug sphere -->
-            <a-entity id="leftHand"
-                hand-controls="hand: left; handModelStyle: lowPoly"
-                oculus-touch-controls="hand: left"
-                grab-hand="hand: left">
-                <!-- Debug marker -->
-                <a-sphere radius="0.05" color="#00FF00" opacity="0.5"></a-sphere>
-            </a-entity>
+        const vrButton = document.getElementById('vrButton');
+        vrButton.onclick = () => {
+            if (renderer.xr.getSession()) {
+                renderer.xr.getSession().end();
+            } else {
+                navigator.xr.requestSession('immersive-vr', { 
+                    requiredFeatures: ['local-floor'], 
+                    optionalFeatures: ['hand-tracking'] 
+                }).then(session => renderer.xr.setSession(session));
+            }
+        };
 
-            <!-- RIGHT HAND - Visual debug sphere -->
-            <a-entity id="rightHand"
-                hand-controls="hand: right; handModelStyle: lowPoly"
-                oculus-touch-controls="hand: right"
-                grab-hand="hand: right">
-                <!-- Debug marker -->
-                <a-sphere radius="0.05" color="#FF0000" opacity="0.5"></a-sphere>
-            </a-entity>
-        </a-entity>
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
 
-        <!-- BIG RED CUBE - Easy to see -->
-        <a-box 
-            id="cube1"
-            class="grabbable" 
-            position="0 1.2 -1" 
-            width="0.3" height="0.3" depth="0.3" 
-            color="#FF0000"
-            material="emissive: #FF0000; emissiveIntensity: 0.5"
-            dynamic-body="mass: 1">
-        </a-box>
+        const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        sunLight.position.set(5, 10, 5);
+        sunLight.castShadow = true;
+        sunLight.shadow.mapSize.width = 2048;
+        sunLight.shadow.mapSize.height = 2048;
+        scene.add(sunLight);
 
-        <!-- BIG GREEN SPHERE -->
-        <a-sphere 
-            id="sphere1"
-            class="grabbable" 
-            position="0.5 1.2 -1" 
-            radius="0.15" 
-            color="#00FF00"
-            material="emissive: #00FF00; emissiveIntensity: 0.5"
-            dynamic-body="mass: 0.5; shape: sphere">
-        </a-sphere>
+        const groundGeometry = new THREE.PlaneGeometry(50, 50);
+        const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x4a7c59, roughness: 0.8 });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
 
-        <!-- BIG BLUE CYLINDER -->
-        <a-cylinder 
-            id="cyl1"
-            class="grabbable" 
-            position="-0.5 1.2 -1" 
-            radius="0.1" height="0.3" 
-            color="#0000FF"
-            material="emissive: #0000FF; emissiveIntensity: 0.5"
-            dynamic-body="mass: 0.8; shape: cylinder">
-        </a-cylinder>
+        const gravity = -9.8;
+        const physicsObjects = [];
 
-        <!-- Table -->
-        <a-box position="0 0.9 -1" width="2" height="0.1" depth="0.8" color="#8B4513" static-body></a-box>
-    </a-scene>
+        class PhysicsObject {
+            constructor(mesh, mass = 1) {
+                this.mesh = mesh;
+                this.mass = mass;
+                this.velocity = new THREE.Vector3();
+                this.angularVelocity = new THREE.Vector3();
+                this.isGrabbed = false;
+                physicsObjects.push(this);
+            }
 
-    <script>
-        let grabbed = { left: null, right: null };
+            update(deltaTime) {
+                if (this.isGrabbed) return;
+                this.velocity.y += gravity * deltaTime;
+                this.mesh.position.addScaledVector(this.velocity, deltaTime);
+                const angle = this.angularVelocity.length() * deltaTime;
+                if (angle > 0) {
+                    const axis = this.angularVelocity.clone().normalize();
+                    this.mesh.rotateOnWorldAxis(axis, angle);
+                }
+                const minY = 0.5;
+                if (this.mesh.position.y < minY) {
+                    this.mesh.position.y = minY;
+                    this.velocity.y = Math.abs(this.velocity.y) * 0.5;
+                    this.velocity.x *= 0.8;
+                    this.velocity.z *= 0.8;
+                    this.angularVelocity.multiplyScalar(0.8);
+                }
+                this.velocity.multiplyScalar(0.99);
+                this.angularVelocity.multiplyScalar(0.98);
+            }
 
-        function updateDebug(hand, msg) {
-            const status = document.getElementById(hand + 'Status');
-            if (status) status.textContent = hand.charAt(0).toUpperCase() + hand.slice(1) + ' Hand: ' + msg;
+            grab() { 
+                this.isGrabbed = true; 
+                this.velocity.set(0,0,0); 
+                this.angularVelocity.set(0,0,0); 
+            }
+            
+            release(throwVelocity) { 
+                this.isGrabbed = false; 
+                this.velocity.copy(throwVelocity); 
+            }
         }
 
-        function updatePositions(obj, hand) {
-            const pos = obj.getAttribute('position');
-            const worldPos = obj.object3D.getWorldPosition(new THREE.Vector3());
-            const scale = obj.getAttribute('scale');
-            const visible = obj.getAttribute('visible');
-            
-            document.getElementById('positions').innerHTML = 
-                `${hand} object:<br>` +
-                `Local: ${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)}<br>` +
-                `World: ${worldPos.x.toFixed(2)}, ${worldPos.y.toFixed(2)}, ${worldPos.z.toFixed(2)}<br>` +
-                `Scale: ${scale.x}, ${scale.y}, ${scale.z}<br>` +
-                `Visible: ${visible !== false}`;
+        function createBall(x, y, z, radius, color) {
+            const geometry = new THREE.SphereGeometry(radius, 32, 32);
+            const material = new THREE.MeshStandardMaterial({ color, roughness: 0.5 });
+            const ball = new THREE.Mesh(geometry, material);
+            ball.position.set(x, y, z);
+            ball.castShadow = true;
+            scene.add(ball);
+            return new PhysicsObject(ball, 0.5);
         }
 
-        AFRAME.registerComponent('grab-hand', {
-            schema: { hand: {type: 'string'} },
-            
-            init: function() {
-                console.log(this.data.hand + ' hand initialized');
-                this.el.addEventListener('gripdown', this.onGripDown.bind(this));
-                this.el.addEventListener('gripup', this.onGripUp.bind(this));
-            },
+        function createBox(x, y, z, size, color) {
+            const geometry = new THREE.BoxGeometry(size, size, size);
+            const material = new THREE.MeshStandardMaterial({ color, roughness: 0.7 });
+            const box = new THREE.Mesh(geometry, material);
+            box.position.set(x, y, z);
+            box.castShadow = true;
+            scene.add(box);
+            return new PhysicsObject(box, 1);
+        }
 
-            onGripDown: function() {
-                const hand = this.data.hand;
-                console.log('=== GRIP DOWN:', hand, '===');
-                
-                // Already holding something?
-                if (grabbed[hand]) {
-                    console.log('Already holding something');
-                    return;
-                }
+        function createCylinder(x, y, z, radius, height, color) {
+            const geometry = new THREE.CylinderGeometry(radius, radius, height, 32);
+            const material = new THREE.MeshStandardMaterial({ color, roughness: 0.6 });
+            const cylinder = new THREE.Mesh(geometry, material);
+            cylinder.position.set(x, y, z);
+            cylinder.castShadow = true;
+            scene.add(cylinder);
+            return new PhysicsObject(cylinder, 0.8);
+        }
 
-                // Find nearby objects
-                const handPos = this.el.object3D.getWorldPosition(new THREE.Vector3());
-                console.log('Hand position:', handPos);
-                
-                const grabbables = document.querySelectorAll('.grabbable');
-                console.log('Found', grabbables.length, 'grabbable objects');
-                
-                let closest = null;
-                let minDist = 0.5; // Increased range
-                
-                grabbables.forEach(obj => {
-                    // Skip if already grabbed
-                    if (grabbed.left === obj || grabbed.right === obj) {
-                        console.log('Skipping', obj.id, '- already grabbed');
-                        return;
-                    }
-                    
-                    const objPos = obj.object3D.getWorldPosition(new THREE.Vector3());
-                    const dist = handPos.distanceTo(objPos);
-                    console.log('Distance to', obj.id, ':', dist.toFixed(3));
-                    
-                    if (dist < minDist) {
-                        closest = obj;
-                        minDist = dist;
-                    }
-                });
-                
-                if (!closest) {
-                    console.log('No object close enough. Closest was', minDist.toFixed(3), 'meters away');
-                    updateDebug(hand, 'Nothing in range');
-                    return;
-                }
+        createBall(-2, 2, -3, 0.3, 0xff0000);
+        createBall(-1, 2, -3, 0.3, 0x00ff00);
+        createBall(0, 2, -3, 0.3, 0x0000ff);
+        createBall(1, 2, -3, 0.3, 0xffff00);
+        createBall(2, 2, -3, 0.3, 0xff00ff);
+        createBox(-2, 1.5, -1, 0.4, 0xff6600);
+        createBox(-1, 1.5, -1, 0.4, 0x6600ff);
+        createBox(0, 1.5, -1, 0.4, 0x00ffff);
+        createBox(1, 1.5, -1, 0.4, 0xff0066);
+        createCylinder(-1.5, 1, 1, 0.2, 0.6, 0x99ff00);
+        createCylinder(-0.5, 1, 1, 0.2, 0.6, 0xff9900);
+        createCylinder(0.5, 1, 1, 0.2, 0.6, 0x0099ff);
+        createCylinder(1.5, 1, 1, 0.2, 0.6, 0xff0099);
 
-                console.log('Grabbing:', closest.id, 'at distance:', minDist.toFixed(3));
-                
-                // Store original parent
-                const originalParent = closest.parentNode;
-                console.log('Original parent:', originalParent.tagName);
-                
-                // Remove physics
-                if (closest.hasAttribute('dynamic-body')) {
-                    console.log('Removing dynamic-body');
-                    closest.removeAttribute('dynamic-body');
-                }
-                
-                // Get world position BEFORE attaching
-                const worldPos = new THREE.Vector3();
-                const worldRot = new THREE.Quaternion();
-                closest.object3D.getWorldPosition(worldPos);
-                closest.object3D.getWorldQuaternion(worldRot);
-                console.log('World pos before attach:', worldPos);
-                
-                // Attach to hand
-                this.el.appendChild(closest);
-                console.log('Attached to hand');
-                
-                // Set LOCAL position relative to hand
-                // Put it WAY out in front
-                closest.setAttribute('position', '0 0 -0.5');
-                closest.setAttribute('rotation', '0 0 0');
-                closest.setAttribute('scale', '1 1 1');
-                closest.setAttribute('visible', 'true');
-                
-                console.log('Set position to: 0 0 -0.5');
-                console.log('Set scale to: 1 1 1');
-                console.log('Set visible to: true');
-                
-                // Store reference
-                grabbed[hand] = closest;
-                
-                // Update debug
-                updateDebug(hand, 'Holding ' + closest.id);
-                updatePositions(closest, hand);
-                
-                // Log every frame for 2 seconds
-                let frameCount = 0;
-                const logInterval = setInterval(() => {
-                    const pos = closest.getAttribute('position');
-                    const wPos = closest.object3D.getWorldPosition(new THREE.Vector3());
-                    console.log('Frame', frameCount++, 'Local:', pos.x.toFixed(2), pos.y.toFixed(2), pos.z.toFixed(2), 
-                                'World:', wPos.x.toFixed(2), wPos.y.toFixed(2), wPos.z.toFixed(2));
-                    
-                    if (frameCount > 120) clearInterval(logInterval); // 2 seconds at 60fps
-                }, 16);
-            },
+        const platformGeometry = new THREE.BoxGeometry(4, 0.3, 4);
+        const platformMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+        const platform = new THREE.Mesh(platformGeometry, platformMaterial);
+        platform.position.set(0, 1, -2);
+        platform.castShadow = true;
+        scene.add(platform);
 
-            onGripUp: function() {
-                const hand = this.data.hand;
-                const obj = grabbed[hand];
-                
-                if (!obj) {
-                    console.log('Nothing to release');
-                    return;
-                }
-                
-                console.log('=== RELEASING:', obj.id, '===');
-                
-                // Get world position before detaching
-                const worldPos = new THREE.Vector3();
-                const worldRot = new THREE.Quaternion();
-                obj.object3D.getWorldPosition(worldPos);
-                obj.object3D.getWorldQuaternion(worldRot);
-                console.log('World pos before detach:', worldPos);
-                
-                // Detach from hand
-                const scene = document.querySelector('a-scene');
-                scene.appendChild(obj);
-                console.log('Detached from hand');
-                
-                // Set world position
-                obj.object3D.position.copy(worldPos);
-                obj.object3D.quaternion.copy(worldRot);
-                console.log('Restored world position');
-                
-                // Re-add physics
-                let shape = 'box';
-                if (obj.tagName === 'A-SPHERE') shape = 'sphere';
-                if (obj.tagName === 'A-CYLINDER') shape = 'cylinder';
-                
-                obj.setAttribute('dynamic-body', {
-                    mass: 1,
-                    shape: shape
-                });
-                console.log('Re-added physics with shape:', shape);
-                
-                grabbed[hand] = null;
-                updateDebug(hand, 'Empty');
-                
-                console.log('Release complete');
-            },
+        const controllerModelFactory = new XRControllerModelFactory();
+        const controllers = [];
 
-            tick: function() {
-                const hand = this.data.hand;
-                if (grabbed[hand]) {
-                    updatePositions(grabbed[hand], hand);
+        for (let i = 0; i < 2; i++) {
+            const controller = renderer.xr.getController(i);
+            controller.userData.grabbed = null;
+            controller.userData.previousPosition = new THREE.Vector3();
+            controller.userData.velocity = new THREE.Vector3();
+            controller.addEventListener('selectstart', onSelectStart);
+            controller.addEventListener('selectend', onSelectEnd);
+            scene.add(controller);
+            const grip = renderer.xr.getControllerGrip(i);
+            grip.add(controllerModelFactory.createControllerModel(grip));
+            scene.add(grip);
+            const geometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,-1)]);
+            const line = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: 0xffffff }));
+            line.scale.z = 5;
+            controller.add(line);
+            controllers.push(controller);
+        }
+
+        function onSelectStart(event) {
+            const controller = event.target;
+            const tempMatrix = new THREE.Matrix4();
+            controller.updateMatrixWorld();
+            tempMatrix.identity().extractRotation(controller.matrixWorld);
+            const raycaster = new THREE.Raycaster();
+            raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+            raycaster.ray.direction.set(0,0,-1).applyMatrix4(tempMatrix);
+            const intersects = raycaster.intersectObjects(physicsObjects.map(obj => obj.mesh));
+            if (intersects.length > 0) {
+                const object = intersects[0].object;
+                const physicsObj = physicsObjects.find(obj => obj.mesh === object);
+                if (physicsObj && !physicsObj.isGrabbed) {
+                    physicsObj.grab();
+                    controller.userData.grabbed = physicsObj;
+                    controller.attach(object);
                 }
             }
-        });
+        }
 
-        console.log('%c=== VR GRAB DEBUG MODE ===', 'color: #0F0; font-size: 20px; font-weight: bold');
-        console.log('Watch the console for detailed grab/release logs');
-        console.log('Green sphere = left hand position');
-        console.log('Red sphere = right hand position');
+        function onSelectEnd(event) {
+            const controller = event.target;
+            if (controller.userData.grabbed) {
+                const physicsObj = controller.userData.grabbed;
+                const object = physicsObj.mesh;
+                scene.attach(object);
+                const throwVelocity = controller.userData.velocity.clone().multiplyScalar(3);
+                physicsObj.release(throwVelocity);
+                controller.userData.grabbed = null;
+            }
+        }
+
+        const clock = new THREE.Clock();
+        function animate() {
+            const deltaTime = clock.getDelta();
+            controllers.forEach(controller => {
+                const currentPosition = new THREE.Vector3();
+                currentPosition.setFromMatrixPosition(controller.matrixWorld);
+                controller.userData.velocity.subVectors(currentPosition, controller.userData.previousPosition).divideScalar(deltaTime);
+                controller.userData.previousPosition.copy(currentPosition);
+            });
+            physicsObjects.forEach(obj => obj.update(deltaTime));
+            renderer.render(scene, camera);
+        }
+        renderer.setAnimationLoop(animate);
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
 </html>
