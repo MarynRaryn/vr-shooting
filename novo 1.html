@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>VR Playground</title>
+    <title>VR Playground - Pro Edition</title>
     <style>
         body { margin: 0; overflow: hidden; }
         #info { 
@@ -14,11 +14,12 @@
             padding: 15px; 
             border-radius: 8px; 
             z-index: 100;
+            font-family: sans-serif;
         }
     </style>
 </head>
 <body>
-    <div id="info">Loading playground...</div>
+    <div id="info">Loading playground & workshop...</div>
 
     <script type="importmap">
     {
@@ -35,36 +36,27 @@
         import { VRButton } from 'three/addons/webxr/VRButton.js';
         import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
 
-        const info = document.getElementById('info');
-        info.innerHTML = 'Building playground...';
-
-        // Scene
+        // --- SCENE & CAMERA ---
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87ceeb);
         scene.fog = new THREE.Fog(0x87ceeb, 0, 100);
 
-        // Camera
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 200);
-        camera.position.set(0, 1.6, 10);
+        camera.position.set(0, 1.6, 12);
 
-        // Renderer
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
         renderer.xr.enabled = true;
         document.body.appendChild(renderer.domElement);
-
-        // VR Button
         document.body.appendChild(VRButton.createButton(renderer));
 
-        // Controls
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.target.set(0, 1, 0);
         controls.update();
 
-        // Lights
+        // --- LIGHTING ---
         scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-        
         const sun = new THREE.DirectionalLight(0xffffff, 0.8);
         sun.position.set(20, 30, 20);
         sun.castShadow = true;
@@ -75,10 +67,9 @@
         sun.shadow.mapSize.width = 2048;
         sun.shadow.mapSize.height = 2048;
         scene.add(sun);
-
         scene.add(new THREE.HemisphereLight(0x87ceeb, 0x4a7c59, 0.4));
 
-        // Ground
+        // --- GROUND ---
         const ground = new THREE.Mesh(
             new THREE.PlaneGeometry(100, 100),
             new THREE.MeshStandardMaterial({ color: 0x66bb66, roughness: 0.8 })
@@ -87,108 +78,77 @@
         ground.receiveShadow = true;
         scene.add(ground);
 
-        // --- PLAYGROUND EQUIPMENT (Original Code) ---
+        // --- PLAYGROUND EQUIPMENT ---
         // Slide
         const slideGroup = new THREE.Group();
         const slidePlatform = new THREE.Mesh(new THREE.BoxGeometry(3, 0.3, 3), new THREE.MeshStandardMaterial({ color: 0xff6600 }));
-        slidePlatform.position.set(0, 3, 0);
+        slidePlatform.position.y = 3;
         slidePlatform.castShadow = true;
         slideGroup.add(slidePlatform);
 
-        const slideRamp = new THREE.Mesh(new THREE.BoxGeometry(3, 0.3, 5), new THREE.MeshStandardMaterial({ color: 0xffcc00 }));
+        const slideRamp = new THREE.Mesh(new THREE.BoxGeometry(3, 0.3, 5.5), new THREE.MeshStandardMaterial({ color: 0xffcc00 }));
         slideRamp.position.set(0, 1.5, 3.5);
-        slideRamp.rotation.x = -0.5;
+        slideRamp.rotation.x = -0.55;
         slideRamp.castShadow = true;
         slideGroup.add(slideRamp);
 
         for (let i = 0; i < 4; i++) {
             const support = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 3, 8), new THREE.MeshStandardMaterial({ color: 0x8b4513 }));
-            const x = i < 2 ? -1.3 : 1.3;
-            const z = i % 2 === 0 ? -1.3 : 1.3;
-            support.position.set(x, 1.5, z);
+            support.position.set(i < 2 ? -1.3 : 1.3, 1.5, i % 2 === 0 ? -1.3 : 1.3);
             support.castShadow = true;
             slideGroup.add(support);
         }
-        slideGroup.position.set(-10, 0, -10);
+        slideGroup.position.set(-12, 0, -12);
         scene.add(slideGroup);
 
-        // Swing set
+        // Swing Set
         const swingSet = new THREE.Group();
         const frameTop = new THREE.Mesh(new THREE.BoxGeometry(8, 0.3, 0.3), new THREE.MeshStandardMaterial({ color: 0x8b4513 }));
         frameTop.position.y = 4;
-        frameTop.castShadow = true;
         swingSet.add(frameTop);
-
         for (let i = 0; i < 2; i++) {
             const post = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 4, 8), new THREE.MeshStandardMaterial({ color: 0x8b4513 }));
             post.position.set(i === 0 ? -3.8 : 3.8, 2, 0);
-            post.castShadow = true;
             swingSet.add(post);
         }
-
         for (let i = 0; i < 3; i++) {
-            const seat = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.1, 0.4), new THREE.MeshStandardMaterial({ color: 0xff0000 }));
-            seat.position.set(-2.5 + i * 2.5, 1.5, 0);
-            seat.castShadow = true;
+            const seat = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.1, 0.4), new THREE.MeshStandardMaterial({ color: 0xff0000 }));
+            seat.position.set(-2.5 + i * 2.5, 1.2, 0);
             swingSet.add(seat);
-            for (let j = 0; j < 2; j++) {
-                const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 2.5, 6), new THREE.MeshStandardMaterial({ color: 0x444444 }));
-                chain.position.set(-2.5 + i * 2.5 + (j === 0 ? -0.2 : 0.2), 2.75, 0);
-                swingSet.add(chain);
-            }
         }
-        swingSet.position.set(10, 0, -10);
+        swingSet.position.set(12, 0, -12);
         scene.add(swingSet);
 
         // Merry-go-round
         const merryGoRound = new THREE.Group();
-        const platform = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 0.3, 32), new THREE.MeshStandardMaterial({ color: 0xff00ff }));
-        platform.position.y = 0.15;
-        platform.castShadow = true;
+        const platform = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 0.2, 32), new THREE.MeshStandardMaterial({ color: 0xff00ff }));
+        platform.position.y = 0.1;
         merryGoRound.add(platform);
         for (let i = 0; i < 8; i++) {
+            const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.2, 8), new THREE.MeshStandardMaterial({ color: 0xffff00 }));
             const angle = (i / 8) * Math.PI * 2;
-            const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1, 8), new THREE.MeshStandardMaterial({ color: 0xffff00 }));
-            handle.position.set(Math.cos(angle) * 2, 0.65, Math.sin(angle) * 2);
-            handle.castShadow = true;
+            handle.position.set(Math.cos(angle) * 2.5, 0.6, Math.sin(angle) * 2.5);
             merryGoRound.add(handle);
         }
-        merryGoRound.position.set(0, 0, -10);
+        merryGoRound.position.set(0, 0, -12);
         scene.add(merryGoRound);
 
         // Sandbox
-        const sandbox = new THREE.Mesh(new THREE.BoxGeometry(6, 0.5, 6), new THREE.MeshStandardMaterial({ color: 0xf4a460 }));
-        sandbox.position.set(-10, 0.25, 10);
-        sandbox.castShadow = true;
+        const sandbox = new THREE.Mesh(new THREE.BoxGeometry(6, 0.4, 6), new THREE.MeshStandardMaterial({ color: 0xf4a460 }));
+        sandbox.position.set(-12, 0.2, 12);
         scene.add(sandbox);
-
-        // Monkey bars
-        const monkeyBars = new THREE.Group();
-        const topBar = new THREE.Mesh(new THREE.BoxGeometry(6.5, 0.2, 0.2), new THREE.MeshStandardMaterial({ color: 0x8b4513 }));
-        topBar.position.y = 3;
-        monkeyBars.add(topBar);
-        for (let i = 0; i < 10; i++) {
-            const rung = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6, 8), new THREE.MeshStandardMaterial({ color: 0xffff00 }));
-            rung.position.set(-2.5 + i * 0.6, 3, 0);
-            rung.rotation.z = Math.PI / 2;
-            monkeyBars.add(rung);
-        }
-        monkeyBars.position.set(10, 0, 10);
-        scene.add(monkeyBars);
 
         // Seesaw
         const seesaw = new THREE.Group();
-        const plank = new THREE.Mesh(new THREE.BoxGeometry(6, 0.2, 0.6), new THREE.MeshStandardMaterial({ color: 0xff6600 }));
+        const base = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 0.6, 8), new THREE.MeshStandardMaterial({ color: 0x8b4513 }));
+        const plank = new THREE.Mesh(new THREE.BoxGeometry(6, 0.1, 0.6), new THREE.MeshStandardMaterial({ color: 0xff6600 }));
         plank.position.y = 0.5;
-        seesaw.add(plank);
-        seesaw.position.set(0, 0, 10);
+        seesaw.add(base, plank);
+        seesaw.position.set(0, 0, 12);
         scene.add(seesaw);
 
-        // --- PHYSICS & TOYS ---
+        // --- PHYSICS SYSTEM ---
         const physicsObjects = [];
-        const npcs = [];
-        let draggedObject = null;
-
         class PhysicsObject {
             constructor(mesh) {
                 this.mesh = mesh;
@@ -196,130 +156,121 @@
                 this.isGrabbed = false;
                 physicsObjects.push(this);
             }
-
             update(dt) {
                 if (this.isGrabbed) return;
                 this.velocity.y += -9.8 * dt;
                 this.mesh.position.addScaledVector(this.velocity, dt);
-                if (this.mesh.position.y < 0.3) {
-                    this.mesh.position.y = 0.3;
-                    this.velocity.y = Math.abs(this.velocity.y) * 0.4;
-                    this.velocity.x *= 0.8;
-                    this.velocity.z *= 0.8;
+                if (this.mesh.position.y < 0.1) {
+                    this.mesh.position.y = 0.1;
+                    this.velocity.y *= -0.3;
+                    this.velocity.x *= 0.9;
+                    this.velocity.z *= 0.9;
                 }
-                this.velocity.multiplyScalar(0.98);
             }
-
-            grab() { this.isGrabbed = true; this.velocity.set(0, 0, 0); }
+            grab() { this.isGrabbed = true; this.velocity.set(0,0,0); }
             release(vel) { this.isGrabbed = false; this.velocity.copy(vel); }
         }
 
-        // Create Balls
-        for (let i = 0; i < 8; i++) {
-            const ball = new THREE.Mesh(
-                new THREE.SphereGeometry(0.3, 16, 16),
-                new THREE.MeshStandardMaterial({ color: [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff, 0x00ffff, 0xff8800, 0x88ff00][i] })
-            );
-            ball.position.set(-8 + i * 2, 1, 0);
-            ball.castShadow = true;
-            scene.add(ball);
-            new PhysicsObject(ball);
-        }
-
-        // --- NPC CLASS (Original Code) ---
+        // --- NPC SYSTEM ---
+        const npcs = [];
         class NPC {
             constructor(x, z, color) {
                 this.group = new THREE.Group();
-                this.time = Math.random() * 100;
-                this.direction = Math.random() * Math.PI * 2;
                 const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.2, 8), new THREE.MeshStandardMaterial({ color }));
                 body.position.y = 1;
-                this.group.add(body);
+                const head = new THREE.Mesh(new THREE.SphereGeometry(0.25), new THREE.MeshStandardMaterial({ color: 0xffdbac }));
+                head.position.y = 1.7;
+                this.group.add(body, head);
                 this.group.position.set(x, 0, z);
+                this.direction = Math.random() * Math.PI * 2;
                 scene.add(this.group);
                 npcs.push(this);
             }
             update(dt) {
-                this.time += dt;
                 this.group.position.x += Math.cos(this.direction) * 0.5 * dt;
                 this.group.position.z += Math.sin(this.direction) * 0.5 * dt;
-                if (Math.abs(this.group.position.x) > 30 || Math.abs(this.group.position.z) > 30) this.direction += Math.PI;
+                if (Math.abs(this.group.position.x) > 25 || Math.abs(this.group.position.z) > 25) this.direction += Math.PI;
                 this.group.rotation.y = this.direction;
             }
         }
-        for (let i = 0; i < 5; i++) new NPC(Math.cos(i) * 15, Math.sin(i) * 15, 0xffffff * Math.random());
+        for (let i = 0; i < 5; i++) new NPC(Math.random()*10-5, Math.random()*10-5, Math.random()*0xffffff);
 
-        // --- NEW VR CONTROLLER & GRAB SCRIPT ---
+        // --- REALISTIC TOOLS ---
+        function createTool(type, x, z) {
+            const group = new THREE.Group();
+            if (type === 'hammer') {
+                const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.4), new THREE.MeshStandardMaterial({color: 0x8B4513}));
+                const head = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 0.06), new THREE.MeshStandardMaterial({color: 0x333333}));
+                head.position.y = 0.2; group.add(handle, head);
+            } else if (type === 'wrench') {
+                const handle = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.3, 0.015), new THREE.MeshStandardMaterial({color: 0xaaaaaa}));
+                const head = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.01, 8, 6), new THREE.MeshStandardMaterial({color: 0x888888}));
+                head.position.y = 0.15; head.rotation.x = Math.PI/2; group.add(handle, head);
+            } else if (type === 'flashlight') {
+                const body = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.25), new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.2}));
+                const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.035, 0.06), new THREE.MeshStandardMaterial({color: 0x444444}));
+                rim.position.y = 0.13; group.add(body, rim);
+            }
+            group.position.set(x, 0.5, z);
+            scene.add(group);
+            new PhysicsObject(group);
+        }
+        createTool('hammer', 2, 2);
+        createTool('wrench', 3, 2);
+        createTool('flashlight', 4, 2);
+
+        // --- PRO VR GRIP LOGIC ---
         const controllerModelFactory = new XRControllerModelFactory();
-        const raycaster = new THREE.Raycaster();
-        const tempMatrix = new THREE.Matrix4();
+        const grabRange = 0.4; // Realistically short reach
 
-        function onSelectStart(event) {
+        function onSqueezeStart(event) {
             const controller = event.target;
-            tempMatrix.identity().extractRotation(controller.matrixWorld);
-            raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
-            raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+            const handPos = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld);
+            
+            let closest = null;
+            let minDistance = grabRange;
 
-            const intersects = raycaster.intersectObjects(physicsObjects.map(o => o.mesh));
-            if (intersects.length > 0) {
-                const obj = physicsObjects.find(o => o.mesh === intersects[0].object);
-                if (obj) {
-                    obj.grab();
-                    controller.userData.selected = obj;
-                    controller.attach(obj.mesh); // This "snaps" it to hand
+            physicsObjects.forEach(obj => {
+                const objPos = new THREE.Vector3().setFromMatrixPosition(obj.mesh.matrixWorld);
+                const dist = handPos.distanceTo(objPos);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    closest = obj;
                 }
+            });
+
+            if (closest && !closest.isGrabbed) {
+                closest.grab();
+                controller.attach(closest.mesh);
+                controller.userData.selected = closest;
             }
         }
 
-        function onSelectEnd(event) {
+        function onSqueezeEnd(event) {
             const controller = event.target;
             if (controller.userData.selected) {
                 const obj = controller.userData.selected;
                 scene.attach(obj.mesh);
-                // Throwing force
-                obj.release(new THREE.Vector3(0, 2, -5).applyQuaternion(controller.quaternion));
+                obj.release(new THREE.Vector3(0, 0, 0)); // Drops at feet
                 controller.userData.selected = null;
             }
         }
 
-        // Build controllers with models and lines
         for (let i = 0; i < 2; i++) {
-            // Pointer logic
             const controller = renderer.xr.getController(i);
-            controller.addEventListener('selectstart', onSelectStart);
-            controller.addEventListener('selectend', onSelectEnd);
+            controller.addEventListener('squeezestart', onSqueezeStart);
+            controller.addEventListener('squeezeend', onSqueezeEnd);
             scene.add(controller);
 
-            // Visual Model (The "Hands")
             const grip = renderer.xr.getControllerGrip(i);
             grip.add(controllerModelFactory.createControllerModel(grip));
             scene.add(grip);
-
-            // Visual Pointer Line
-            const lineGeometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,-1)]);
-            const line = new THREE.Line(lineGeometry);
-            line.scale.z = 5;
-            controller.add(line);
         }
 
-        // Mouse Fallback
-        const mouse = new THREE.Vector2();
-        renderer.domElement.addEventListener('mousedown', (e) => {
-            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-            raycaster.setFromCamera(mouse, camera);
-            const hits = raycaster.intersectObjects(physicsObjects.map(o => o.mesh));
-            if (hits.length > 0) {
-                draggedObject = physicsObjects.find(o => o.mesh === hits[0].object);
-                draggedObject.grab();
-            }
-        });
-        renderer.domElement.addEventListener('mouseup', () => {
-            if (draggedObject) { draggedObject.release(new THREE.Vector3(0, 5, -5)); draggedObject = null; }
-        });
-
-        // Main Loop
+        // --- MAIN LOOP ---
         const clock = new THREE.Clock();
+        info.innerHTML = 'VR Ready. Use SIDE GRIP buttons to pick up tools (must be close!)';
+
         renderer.setAnimationLoop(() => {
             const dt = Math.min(clock.getDelta(), 0.1);
             physicsObjects.forEach(o => o.update(dt));
@@ -333,7 +284,6 @@
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
-
     </script>
 </body>
 </html>
