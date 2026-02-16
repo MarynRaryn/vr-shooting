@@ -2,18 +2,23 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>VR Mega Sandbox - Playground & Combat</title>
+    <title>VR Ultimate Sandbox - Full Playground & Combat</title>
     <style>
         body { margin: 0; overflow: hidden; }
         #info { 
             position: absolute; top: 10px; left: 10px; color: white; 
             background: rgba(0,0,0,0.8); padding: 15px; border-radius: 8px; 
-            z-index: 100; font-family: sans-serif;
+            z-index: 100; font-family: sans-serif; pointer-events: none;
         }
     </style>
 </head>
 <body>
-    <div id="info">Building Mega World... Reach to your chest for ammo!</div>
+    <div id="info">
+        <b>CONTROLS:</b><br>
+        Left Stick: Move | Right Stick: Turn<br>
+        Side Grip: Pick up/Throw | Trigger: Fire Gun<br>
+        Chest: Grab Ammo
+    </div>
 
     <script type="importmap">
     {
@@ -30,14 +35,12 @@
         import { VRButton } from 'three/addons/webxr/VRButton.js';
         import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
 
-        // --- CORE ENGINE ---
+        // --- 1. CORE ENGINE SETUP ---
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87ceeb);
         scene.fog = new THREE.Fog(0x87ceeb, 0, 100);
 
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 200);
-        camera.position.set(0, 1.6, 15);
-
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
@@ -45,30 +48,35 @@
         document.body.appendChild(renderer.domElement);
         document.body.appendChild(VRButton.createButton(renderer));
 
+        // Camera Group for VR Locomotion
+        const cameraGroup = new THREE.Group();
+        cameraGroup.add(camera);
+        scene.add(cameraGroup);
+
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.target.set(0, 1, 0);
 
-        // --- LIGHTING ---
+        // --- 2. LIGHTING ---
         scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-        const sun = new THREE.DirectionalLight(0xffffff, 0.8);
-        sun.position.set(20, 30, 20);
+        const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+        sun.position.set(20, 40, 20);
         sun.castShadow = true;
-        sun.shadow.camera.left = -35; sun.shadow.camera.right = 35;
-        sun.shadow.camera.top = 35; sun.shadow.camera.bottom = -35;
+        sun.shadow.camera.left = -40; sun.shadow.camera.right = 40;
+        sun.shadow.camera.top = 40; sun.shadow.camera.bottom = -40;
         sun.shadow.mapSize.set(2048, 2048);
         scene.add(sun);
         scene.add(new THREE.HemisphereLight(0x87ceeb, 0x4a7c59, 0.4));
 
-        // --- GROUND ---
+        // --- 3. GROUND ---
         const ground = new THREE.Mesh(
-            new THREE.PlaneGeometry(100, 100),
-            new THREE.MeshStandardMaterial({ color: 0x66bb66, roughness: 0.8 })
+            new THREE.PlaneGeometry(200, 200),
+            new THREE.MeshStandardMaterial({ color: 0x55aa55, roughness: 0.8 })
         );
         ground.rotation.x = -Math.PI / 2;
         ground.receiveShadow = true;
         scene.add(ground);
 
-        // --- PHYSICS SYSTEM ---
+        // --- 4. ADVANCED PHYSICS SYSTEM (THROWING) ---
         const physicsObjects = [];
         class PhysicsObject {
             constructor(mesh, type = 'prop') {
@@ -77,70 +85,79 @@
                 this.velocity = new THREE.Vector3();
                 this.isGrabbed = false;
                 this.ammoCount = 0;
+                this.lastPos = new THREE.Vector3();
+                this.isDead = false;
                 physicsObjects.push(this);
             }
             update(dt) {
-                if (this.isGrabbed) return;
-                this.velocity.y += -9.8 * dt;
+                if (this.isGrabbed) {
+                    // Calculate throwing velocity based on hand movement
+                    const currentPos = new THREE.Vector3().setFromMatrixPosition(this.mesh.matrixWorld);
+                    this.velocity.subVectors(currentPos, this.lastPos).divideScalar(dt);
+                    this.lastPos.copy(currentPos);
+                    return;
+                }
+                // Gravity & Friction
+                this.velocity.y -= 9.8 * dt;
                 this.mesh.position.addScaledVector(this.velocity, dt);
                 if (this.mesh.position.y < 0.1) {
                     this.mesh.position.y = 0.1;
                     this.velocity.set(0,0,0);
                 }
+                this.velocity.multiplyScalar(0.99); // Air resistance
             }
             grab() { this.isGrabbed = true; this.velocity.set(0,0,0); }
-            release(vel = new THREE.Vector3()) { this.isGrabbed = false; this.velocity.copy(vel); }
+            release(handVel) { 
+                this.isGrabbed = false; 
+                this.velocity.copy(handVel); 
+            }
         }
 
-        // --- PLAYGROUND GEOMETRY ---
+        // --- 5. PLAYGROUND EQUIPMENT (RE-ADDED ALL) ---
         
-        // 1. Slide
-        const slideGroup = new THREE.Group();
+        // SLIDE
+        const slide = new THREE.Group();
         const sPlat = new THREE.Mesh(new THREE.BoxGeometry(3, 0.3, 3), new THREE.MeshStandardMaterial({ color: 0xff6600 }));
         sPlat.position.y = 3;
-        const sRamp = new THREE.Mesh(new THREE.BoxGeometry(3, 0.3, 5.5), new THREE.MeshStandardMaterial({ color: 0xffcc00 }));
+        const sRamp = new THREE.Mesh(new THREE.BoxGeometry(3, 0.3, 6), new THREE.MeshStandardMaterial({ color: 0xffcc00 }));
         sRamp.position.set(0, 1.5, 3.5); sRamp.rotation.x = -0.55;
-        slideGroup.add(sPlat, sRamp);
-        for(let i=0; i<4; i++) {
-            const p = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 3), new THREE.MeshStandardMaterial({ color: 0x8b4513 }));
-            p.position.set(i<2 ? -1.3 : 1.3, 1.5, i%2===0 ? -1.3 : 1.3);
-            slideGroup.add(p);
+        slide.add(sPlat, sRamp);
+        for(let i=0; i<4; i++){
+            const p = new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,3), new THREE.MeshStandardMaterial({color: 0x8b4513}));
+            p.position.set(i<2?-1.3:1.3, 1.5, i%2==0?-1.3:1.3); slide.add(p);
         }
-        slideGroup.position.set(-15, 0, -15);
-        scene.add(slideGroup);
+        slide.position.set(-15, 0, -15); scene.add(slide);
 
-        // 2. Swing Set
-        const swingSet = new THREE.Group();
-        const swTop = new THREE.Mesh(new THREE.BoxGeometry(8, 0.2, 0.2), new THREE.MeshStandardMaterial({ color: 0x8b4513 }));
-        swTop.position.y = 4; swingSet.add(swTop);
-        for(let i=0; i<3; i++) {
-            const seat = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.1, 0.4), new THREE.MeshStandardMaterial({ color: 0xff0000 }));
-            seat.position.set(-2.5 + i*2.5, 1.2, 0); swingSet.add(seat);
+        // SWING SET
+        const swings = new THREE.Group();
+        const swTop = new THREE.Mesh(new THREE.BoxGeometry(8,0.2,0.2), new THREE.MeshStandardMaterial({color: 0x8b4513}));
+        swTop.position.y = 4; swings.add(swTop);
+        for(let i=0; i<3; i++){
+            const seat = new THREE.Mesh(new THREE.BoxGeometry(0.8,0.1,0.4), new THREE.MeshStandardMaterial({color:0xff0000}));
+            seat.position.set(-2.5+i*2.5, 1.2, 0); swings.add(seat);
         }
-        swingSet.position.set(15, 0, -15);
-        scene.add(swingSet);
+        swings.position.set(15, 0, -15); scene.add(swings);
 
-        // 3. Interactive Merry-Go-Round
-        const merryGoRound = new THREE.Group();
+        // INTERACTIVE MERRY-GO-ROUND
+        const mgr = new THREE.Group();
         const mgBase = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 0.2, 32), new THREE.MeshStandardMaterial({ color: 0xff00ff }));
-        mgBase.position.y = 0.1; merryGoRound.add(mgBase);
+        mgBase.position.y = 0.1; mgr.add(mgBase);
         const mgHandles = [];
         for (let i = 0; i < 8; i++) {
             const h = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.2), new THREE.MeshStandardMaterial({ color: 0xffff00 }));
             const ang = (i / 8) * Math.PI * 2;
             h.position.set(Math.cos(ang)*2.5, 0.6, Math.sin(ang)*2.5);
-            merryGoRound.add(h); mgHandles.push(h);
+            mgr.add(h); mgHandles.push(h);
         }
-        merryGoRound.position.set(0, 0, -15);
-        scene.add(merryGoRound);
+        mgr.position.set(0, 0, -15); scene.add(mgr);
 
-        // 4. Monkey Bars & Seesaw & Sandbox
+        // MONKEY BARS & SEESAW & SANDBOX
         const mBars = new THREE.Group();
         const mbTop = new THREE.Mesh(new THREE.BoxGeometry(6, 0.2, 2), new THREE.MeshStandardMaterial({color: 0x8b4513}));
         mbTop.position.y = 3; mBars.add(mbTop);
         mBars.position.set(15, 0, 15); scene.add(mBars);
 
-        const sandbox = new THREE.Mesh(new THREE.BoxGeometry(6, 0.4, 6), new THREE.MeshStandardMaterial({ color: 0xf4a460 }));
+        const sandbox = new THREE.Mesh(new THREE.BoxGeometry(8, 0.4, 8), new THREE.MeshStandardMaterial({ color: 0xf4a460 }));
         sandbox.position.set(-15, 0.2, 15); scene.add(sandbox);
 
         const seesaw = new THREE.Group();
@@ -148,14 +165,24 @@
         ssPlank.position.y = 0.5; seesaw.add(ssPlank);
         seesaw.position.set(0, 0, 15); scene.add(seesaw);
 
-        // --- ITEMS & COMBAT ---
+        // --- 6. WEAPONS, TOOLS & BLOCKS ---
         
         // Torso Ammo Spawner
         const ammoSpawner = new THREE.Mesh(
             new THREE.BoxGeometry(0.3, 0.15, 0.1),
-            new THREE.MeshStandardMaterial({ color: 0x00ffff, transparent: true, opacity: 0.4 })
+            new THREE.MeshStandardMaterial({ color: 0x00ffff, transparent: true, opacity: 0.4, wireframe: true })
         );
         scene.add(ammoSpawner);
+
+        function spawnSword(x, z) {
+            const g = new THREE.Group();
+            const blade = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.8, 0.06), new THREE.MeshStandardMaterial({color: 0xcccccc, metalness: 0.8}));
+            blade.position.y = 0.5;
+            const hilt = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.03, 0.08), new THREE.MeshStandardMaterial({color: 0x444444}));
+            hilt.position.y = 0.1;
+            g.add(blade, hilt); g.position.set(x, 0.5, z); scene.add(g);
+            new PhysicsObject(g, 'sword');
+        }
 
         function spawnGun(x, z) {
             const g = new THREE.Group();
@@ -167,68 +194,71 @@
             po.ammoCount = 0;
         }
 
-        function createMag() {
-            const m = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.12, 0.05), new THREE.MeshStandardMaterial({color: 0xffcc00}));
-            scene.add(m);
-            return new PhysicsObject(m, 'ammo');
-        }
-
-        function spawnTool(type, x, z) {
-            const g = new THREE.Group();
-            const head = new THREE.Mesh(new THREE.BoxGeometry(0.1,0.1,0.1), new THREE.MeshStandardMaterial({color: 0x555555}));
-            head.position.y = 0.2; g.add(head);
-            g.position.set(x, 0.5, z); scene.add(g); new PhysicsObject(g, 'tool');
-        }
-
         function spawnBlock(x, z, color) {
             const b = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), new THREE.MeshStandardMaterial({color}));
-            b.position.set(x, 0.5, z); scene.add(b); new PhysicsObject(b, 'block');
+            b.position.set(x, 0.5, z); b.castShadow = true;
+            scene.add(b); new PhysicsObject(b, 'block');
         }
 
-        // Initialize World Items
-        spawnGun(2, 2);
-        spawnTool('hammer', -2, 2);
-        spawnBlock(1, 1, 0xff0000);
-        spawnBlock(1.5, 1, 0x00ff00);
-        spawnBlock(2, 1, 0x0000ff);
+        // Initialize World Props
+        spawnGun(2, 2); spawnSword(-2, 2);
+        for(let i=0; i<8; i++) spawnBlock(Math.random()*4-2, 0.5, Math.random()*0xffffff);
 
-        // --- NPCs ---
+        // --- 7. NPC SYSTEM (WITH HEALTH BARS) ---
         const npcs = [];
-        for(let i=0; i<5; i++) {
-            const n = new THREE.Group();
-            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.2), new THREE.MeshStandardMaterial({color: Math.random()*0xffffff}));
-            body.position.y = 0.6; n.add(body);
-            n.position.set(Math.random()*20-10, 0, Math.random()*20-10);
-            n.userData.dir = Math.random()*Math.PI*2;
-            scene.add(n); npcs.push(n);
+        function createNPC(x, z) {
+            const group = new THREE.Group();
+            const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 1), new THREE.MeshStandardMaterial({color: 0xff4444}));
+            body.position.y = 0.8;
+            
+            const hbGeo = new THREE.PlaneGeometry(0.6, 0.06);
+            const hbMat = new THREE.MeshBasicMaterial({color: 0x00ff00, side: THREE.DoubleSide});
+            const hb = new THREE.Mesh(hbGeo, hbMat);
+            hb.position.y = 2.0;
+            
+            group.add(body, hb);
+            group.position.set(x, 0, z);
+            group.userData = { health: 100, bar: hb, dir: Math.random()*Math.PI*2 };
+            scene.add(group); npcs.push(group);
+        }
+        for(let i=0; i<5; i++) createNPC(Math.random()*20-10, -20-Math.random()*10);
+
+        // --- 8. TARGET GAME ---
+        const targets = [];
+        for(let i=0; i<3; i++) {
+            const t = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.05, 16, 32), new THREE.MeshBasicMaterial({color: 0xffffff}));
+            t.position.set(-4+i*4, 2.5, -25);
+            scene.add(t); targets.push(t);
         }
 
-        // --- VR INTERACTION ---
+        // --- 9. VR INTERACTION & LOCOMOTION ---
         const modelFactory = new XRControllerModelFactory();
-        const grabRange = 0.4;
+        const grabRange = 0.5;
         let mgVel = 0, activeMGHand = null, lastMGAngle = 0;
 
         function onSqueezeStart(e) {
             const c = e.target;
             const hPos = new THREE.Vector3().setFromMatrixPosition(c.matrixWorld);
 
-            // 1. Torso Check
+            // Torso Check (Ammo)
             if (hPos.distanceTo(ammoSpawner.position) < 0.25) {
-                const mag = createMag(); mag.grab();
-                c.attach(mag.mesh); c.userData.selected = mag;
+                const m = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.12, 0.05), new THREE.MeshStandardMaterial({color: 0xffcc00}));
+                scene.add(m);
+                const po = new PhysicsObject(m, 'ammo');
+                po.grab(); c.attach(m); c.userData.selected = po;
                 return;
             }
 
-            // 2. Merry-Go-Round Check
+            // Merry-Go-Round Check
             mgHandles.forEach(h => {
                 if (hPos.distanceTo(new THREE.Vector3().setFromMatrixPosition(h.matrixWorld)) < grabRange) {
                     activeMGHand = c;
-                    const loc = merryGoRound.worldToLocal(hPos.clone());
+                    const loc = mgr.worldToLocal(hPos.clone());
                     lastMGAngle = Math.atan2(loc.z, loc.x);
                 }
             });
 
-            // 3. World Items Check
+            // Grab World Items
             let closest = null, minD = grabRange;
             physicsObjects.forEach(obj => {
                 const d = hPos.distanceTo(new THREE.Vector3().setFromMatrixPosition(obj.mesh.matrixWorld));
@@ -243,8 +273,9 @@
             const c = e.target;
             if (activeMGHand === c) activeMGHand = null;
             if (c.userData.selected) {
-                scene.attach(c.userData.selected.mesh);
-                c.userData.selected.release(new THREE.Vector3(0,0,0));
+                const obj = c.userData.selected;
+                scene.attach(obj.mesh);
+                obj.release(obj.velocity); // Physical throw!
                 c.userData.selected = null;
             }
         }
@@ -257,7 +288,8 @@
                 bullet.position.setFromMatrixPosition(c.matrixWorld);
                 scene.add(bullet);
                 const pb = new PhysicsObject(bullet, 'bullet');
-                pb.velocity.copy(new THREE.Vector3(0,0,-1).applyQuaternion(c.quaternion).multiplyScalar(25));
+                const dir = new THREE.Vector3(0,0,-1).applyQuaternion(c.quaternion).normalize();
+                pb.velocity.copy(dir.multiplyScalar(45));
                 held.ammoCount--;
             }
         }
@@ -267,51 +299,89 @@
             c.addEventListener('squeezestart', onSqueezeStart);
             c.addEventListener('squeezeend', onSqueezeEnd);
             c.addEventListener('selectstart', onSelectStart);
-            scene.add(c);
+            cameraGroup.add(c);
             const g = renderer.xr.getControllerGrip(i);
             g.add(modelFactory.createControllerModel(g));
-            scene.add(g);
+            cameraGroup.add(g);
         }
 
-        // --- ANIMATION LOOP ---
+        // --- 10. MAIN ANIMATION LOOP ---
         const clock = new THREE.Clock();
         renderer.setAnimationLoop(() => {
             const dt = Math.min(clock.getDelta(), 0.1);
+            const session = renderer.xr.getSession();
 
-            // Torso Following
-            const head = renderer.xr.getCamera();
-            ammoSpawner.position.set(head.position.x, head.position.y - 0.45, head.position.z);
-            ammoSpawner.rotation.y = head.rotation.y;
+            // THUMBSTICK LOCOMOTION
+            if (session) {
+                for (const source of session.inputSources) {
+                    if (source.gamepad) {
+                        const axes = source.gamepad.axes;
+                        if (source.handedness === 'left') { // Move
+                            const headYaw = camera.rotation.y;
+                            cameraGroup.position.x += (axes[2] * Math.cos(headYaw) + axes[3] * Math.sin(headYaw)) * 3 * dt;
+                            cameraGroup.position.z += (axes[3] * Math.cos(headYaw) - axes[2] * Math.sin(headYaw)) * 3 * dt;
+                        } else if (source.handedness === 'right') { // Turn
+                            if (Math.abs(axes[2]) > 0.5) cameraGroup.rotation.y -= Math.sign(axes[2]) * 0.05;
+                        }
+                    }
+                }
+            }
 
-            // Merry-Go-Round Physics
+            // TORSO AMMO POSITIONING
+            const headPos = new THREE.Vector3();
+            camera.getWorldPosition(headPos);
+            ammoSpawner.position.set(headPos.x, headPos.y - 0.5, headPos.z);
+            ammoSpawner.rotation.y = camera.rotation.y;
+
+            // MERRY-GO-ROUND SPIN
             if (activeMGHand) {
-                const loc = merryGoRound.worldToLocal(new THREE.Vector3().setFromMatrixPosition(activeMGHand.matrixWorld));
+                const loc = mgr.worldToLocal(new THREE.Vector3().setFromMatrixPosition(activeMGHand.matrixWorld));
                 const cur = Math.atan2(loc.z, loc.x);
                 mgVel = (cur - lastMGAngle) / dt;
                 lastMGAngle = cur;
             }
-            merryGoRound.rotation.y += mgVel * dt;
+            mgr.rotation.y += mgVel * dt;
             mgVel *= 0.98;
 
-            // Reload Mechanic & Physics
+            // PHYSICS & RELOAD & COMBAT
             physicsObjects.forEach(obj => {
+                if (obj.isDead) return;
+                obj.update(dt);
+
+                // Reload Gun
                 if (obj.type === 'ammo' && obj.isGrabbed) {
-                    physicsObjects.forEach(gun => {
-                        if (gun.type === 'gun' && obj.mesh.position.distanceTo(gun.mesh.position) < 0.2) {
-                            gun.ammoCount = 12;
-                            obj.mesh.position.y = -100; // Remove mag
-                            obj.isDead = true;
+                    physicsObjects.forEach(g => {
+                        if (g.type === 'gun' && obj.mesh.position.distanceTo(g.mesh.position) < 0.2) {
+                            g.ammoCount = 10;
+                            scene.remove(obj.mesh); obj.isDead = true;
                         }
                     });
                 }
-                if (!obj.isDead) obj.update(dt);
+
+                // Bullet Hits
+                if (obj.type === 'bullet') {
+                    npcs.forEach(n => {
+                        if (obj.mesh.position.distanceTo(n.position.clone().add(new THREE.Vector3(0,0.8,0))) < 0.6) {
+                            n.userData.health -= 25;
+                            n.userData.bar.scale.x = Math.max(0, n.userData.health/100);
+                            scene.remove(obj.mesh); obj.isDead = true;
+                        }
+                    });
+                    targets.forEach(t => {
+                        if(obj.mesh.position.distanceTo(t.position) < 0.5) {
+                            t.material.color.set(0x00ff00);
+                            setTimeout(()=> t.material.color.set(0xffffff), 300);
+                        }
+                    });
+                }
             });
 
-            // NPC Wander
+            // NPC WANDER
             npcs.forEach(n => {
-                n.position.x += Math.cos(n.userData.dir) * dt;
-                n.position.z += Math.sin(n.userData.dir) * dt;
-                if(Math.abs(n.position.x)>30 || Math.abs(n.position.z)>30) n.userData.dir += Math.PI;
+                if (n.userData.health <= 0) { n.rotation.x = Math.PI/2; return; } // Dead state
+                n.position.x += Math.cos(n.userData.dir) * 0.5 * dt;
+                n.position.z += Math.sin(n.userData.dir) * 0.5 * dt;
+                if(Math.abs(n.position.x)>40 || Math.abs(n.position.z)>40) n.userData.dir += Math.PI;
             });
 
             if (!renderer.xr.isPresenting) controls.update();
