@@ -3,12 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VR Combat - Hand Presence</title>
+<title>VR Combat - Enhanced Physics</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { overflow:hidden; background:#000; font-family:'Segoe UI',sans-serif; }
 
-/* ── HANDEDNESS SCREEN ── */
 #handedness-screen {
   position:absolute; inset:0;
   background:radial-gradient(ellipse at center, #0d1b2a 0%, #000 100%);
@@ -20,19 +19,18 @@ body { overflow:hidden; background:#000; font-family:'Segoe UI',sans-serif; }
   background:linear-gradient(90deg,#00e5ff,#7c4dff);
   -webkit-background-clip:text; -webkit-text-fill-color:transparent;
 }
-#handedness-screen p { opacity:0.6; margin-bottom:50px; font-size:16px; letter-spacing:2px; }
+#handedness-screen p { opacity:0.6; margin-bottom:50px; font-size:16px; }
 .hand-options { display:flex; gap:30px; }
 .hand-btn {
   width:200px; height:220px; border:2px solid rgba(255,255,255,0.15);
   border-radius:20px; background:rgba(255,255,255,0.05);
   color:white; cursor:pointer; transition:all 0.25s;
   display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:16px; font-size:18px; font-weight:bold; letter-spacing:1px;
+  gap:16px; font-size:18px; font-weight:bold;
 }
-.hand-btn:hover { border-color:#00e5ff; background:rgba(0,229,255,0.1); transform:translateY(-6px); box-shadow:0 20px 40px rgba(0,229,255,0.3); }
+.hand-btn:hover { border-color:#00e5ff; background:rgba(0,229,255,0.1); transform:translateY(-6px); }
 .hand-icon { font-size:80px; }
 
-/* ── MODE SCREEN ── */
 #mode-screen {
   position:absolute; inset:0;
   background:radial-gradient(ellipse at center, #0d1b2a 0%, #000 100%);
@@ -42,18 +40,16 @@ body { overflow:hidden; background:#000; font-family:'Segoe UI',sans-serif; }
 #mode-screen h2 { font-size:38px; font-weight:900; letter-spacing:4px; margin-bottom:10px; color:#00e5ff; }
 #mode-screen p { opacity:0.6; margin-bottom:40px; font-size:15px; }
 #handedness-display { font-size:16px; opacity:0.5; margin-bottom:30px; }
-.mode-options { display:flex; gap:24px; flex-wrap:wrap; justify-content:center; }
+.mode-options { display:flex; gap:24px; }
 .mode-btn {
   padding:18px 36px; font-size:18px; font-weight:bold; border:none;
   border-radius:12px; cursor:pointer; letter-spacing:2px; transition:all 0.2s;
 }
-#vr-mode-btn { background:linear-gradient(135deg,#7c4dff,#00e5ff); color:white; box-shadow:0 0 30px rgba(124,77,255,0.5); }
+#vr-mode-btn { background:linear-gradient(135deg,#7c4dff,#00e5ff); color:white; }
 #vr-mode-btn:hover { transform:scale(1.06); }
 #desktop-mode-btn { background:rgba(255,255,255,0.08); color:white; border:2px solid rgba(255,255,255,0.2); }
 #desktop-mode-btn:hover { background:rgba(255,255,255,0.15); }
-#vr-check-status { margin-top:18px; font-size:13px; opacity:0.45; }
 
-/* ── HUD ── */
 #hud { position:absolute; inset:0; pointer-events:none; z-index:10; display:none; }
 #ammo-display {
   position:absolute; bottom:30px; right:30px;
@@ -66,15 +62,13 @@ body { overflow:hidden; background:#000; font-family:'Segoe UI',sans-serif; }
   position:absolute; top:20px; left:20px;
   color:#fff; font-size:15px; font-weight:bold;
   background:rgba(0,0,0,0.65); padding:12px 18px;
-  border-radius:10px; border:1px solid rgba(255,255,255,0.12);
-  line-height:2;
+  border-radius:10px; line-height:2;
 }
 #weapon-hud {
   position:absolute; bottom:30px; left:30px;
   color:#fff; font-size:13px;
   background:rgba(0,0,0,0.65); padding:10px 16px;
-  border-radius:10px; border:1px solid rgba(255,255,255,0.12);
-  line-height:1.9;
+  border-radius:10px; line-height:1.9;
 }
 #crosshair { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); }
 #crosshair::before,#crosshair::after { content:''; position:absolute; background:rgba(255,255,255,0.85); border-radius:2px; }
@@ -85,8 +79,6 @@ body { overflow:hidden; background:#000; font-family:'Segoe UI',sans-serif; }
 #hitmarker::before,#hitmarker::after { content:''; position:absolute; background:#ff1744; border-radius:2px; }
 #hitmarker::before { width:2px; height:10px; top:-5px; left:-1px; }
 #hitmarker::after  { width:10px; height:2px; top:-1px; left:-5px; }
-#reload-bar { position:absolute; bottom:78px; right:30px; width:150px; height:7px; background:rgba(255,255,255,0.15); border-radius:4px; display:none; }
-#reload-fill { height:100%; background:linear-gradient(90deg,#00e5ff,#7c4dff); border-radius:4px; width:0%; }
 #wave-banner {
   position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
   font-size:48px; font-weight:900; color:white;
@@ -95,18 +87,17 @@ body { overflow:hidden; background:#000; font-family:'Segoe UI',sans-serif; }
 #wave-banner.show { opacity:1; }
 #vr-hint {
   position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-  color:white; font-size:16px; text-align:center;
-  background:rgba(0,0,0,0.7); padding:20px 30px; border-radius:12px;
-  border:1px solid rgba(255,255,255,0.2); line-height:2; display:none;
+  color:white; font-size:15px; text-align:center;
+  background:rgba(0,0,0,0.8); padding:20px 30px; border-radius:12px;
+  line-height:2; display:none; max-width:500px;
 }
 </style>
 </head>
 <body>
 
-<!-- STEP 1: Choose handedness -->
 <div id="handedness-screen">
   <h1>VR COMBAT</h1>
-  <p>BEFORE WE BEGIN — CHOOSE YOUR DOMINANT HAND</p>
+  <p>CHOOSE YOUR DOMINANT HAND</p>
   <div class="hand-options">
     <button class="hand-btn" onclick="chooseHand('right')">
       <div class="hand-icon">🤜</div>
@@ -121,7 +112,6 @@ body { overflow:hidden; background:#000; font-family:'Segoe UI',sans-serif; }
   </div>
 </div>
 
-<!-- STEP 2: Choose VR or Desktop -->
 <div id="mode-screen">
   <h2>READY TO PLAY</h2>
   <div id="handedness-display"></div>
@@ -130,36 +120,33 @@ body { overflow:hidden; background:#000; font-family:'Segoe UI',sans-serif; }
     <button class="mode-btn" id="vr-mode-btn" onclick="enterVR()">🥽 ENTER VR</button>
     <button class="mode-btn" id="desktop-mode-btn" onclick="enterDesktop()">🖥️ DESKTOP</button>
   </div>
-  <div id="vr-check-status">Checking VR...</div>
+  <div id="vr-check-status" style="margin-top:18px;font-size:13px;opacity:0.45;">Checking VR...</div>
 </div>
 
-<!-- HUD -->
 <div id="hud">
   <div id="crosshair"></div>
   <div id="hitmarker"></div>
   <div id="ammo-display">-- / --</div>
-  <div id="reload-bar"><div id="reload-fill"></div></div>
   <div id="score-hud">
-    💀 Kills: <span id="kills">0</span><br>
-    🎯 Score: <span id="scoreVal">0</span><br>
-    ❤️ HP: <span id="hp">100</span><br>
-    🌊 Wave: <span id="wave">1</span>
+    💀 <span id="kills">0</span> &nbsp;|&nbsp; 🎯 <span id="scoreVal">0</span><br>
+    ❤️ HP: <span id="hp">100</span> &nbsp;|&nbsp; 🌊 Wave <span id="wave">1</span>
   </div>
   <div id="weapon-hud">
-    <b>EQUIPPED:</b> <span id="eq-weapon">PISTOL</span><br>
-    <span style="opacity:0.5">▲▼ Thumbstick = Switch weapon</span><br>
-    <span style="opacity:0.5">Grip = Grab nearby objects</span>
+    <b>WEAPON:</b> <span id="eq-weapon">PISTOL</span><br>
+    <span style="opacity:0.5;font-size:11px">
+      Thumbstick ▲▼ = Switch<br>
+      Grip = Grab objects<br>
+      Insert mag when empty
+    </span>
   </div>
   <div id="wave-banner"></div>
   <div id="vr-hint">
-    🥽 <b>VR CONTROLS</b><br>
-    Gun hand Trigger = SHOOT<br>
-    Gun hand Thumbstick ▲▼ = Switch weapon<br>
-    Free hand Grip = Grab objects (close range!)<br>
-    Left thumbstick = Move<br>
-    Right thumbstick ◀▶ = Snap turn<br>
-    <br>
-    <span style="opacity:0.5">Reload: bring free hand to gun hand</span>
+    🥽 <b>VR CONTROLS</b><br><br>
+    <b>Gun Hand:</b> Trigger = Shoot | Thumbstick ▲▼ = Switch weapon<br>
+    <b>Free Hand:</b> Grip = Grab/Throw | Magazine appears when empty<br>
+    <b>Reload:</b> Grab magazine, insert into gun slot<br>
+    <b>Move:</b> Left thumbstick | <b>Turn:</b> Right thumbstick ◀▶<br><br>
+    <span style="opacity:0.6">Throw objects at NPCs to knock them down!</span>
   </div>
 </div>
 
@@ -173,18 +160,12 @@ body { overflow:hidden; background:#000; font-family:'Segoe UI',sans-serif; }
 import * as THREE from 'three';
 import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
 
-// ══════════════════════════════════════════════════════════════
-// STATE
-// ══════════════════════════════════════════════════════════════
-let dominantHand = 'right'; // set by user
-let gunHandIndex  = 1; // controller index: right=1, left=0
+let dominantHand = 'right';
+let gunHandIndex  = 1;
 let freeHandIndex = 0;
 let isVR = false;
 let gameStarted = false;
 
-// ══════════════════════════════════════════════════════════════
-// RENDERER
-// ══════════════════════════════════════════════════════════════
 const renderer = new THREE.WebGLRenderer({ antialias:true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
@@ -195,16 +176,10 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.1;
 document.body.appendChild(renderer.domElement);
 
-// ══════════════════════════════════════════════════════════════
-// SCENE
-// ══════════════════════════════════════════════════════════════
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x7ecfea);
 scene.fog = new THREE.FogExp2(0x7ecfea, 0.006);
 
-// ══════════════════════════════════════════════════════════════
-// PLAYER RIG
-// ══════════════════════════════════════════════════════════════
 const playerRig = new THREE.Group();
 scene.add(playerRig);
 playerRig.position.set(0, 0, 8);
@@ -213,9 +188,6 @@ const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHei
 camera.position.set(0, 1.7, 0);
 playerRig.add(camera);
 
-// ══════════════════════════════════════════════════════════════
-// LIGHTS
-// ══════════════════════════════════════════════════════════════
 scene.add(new THREE.AmbientLight(0xfff4e0, 0.45));
 const sun = new THREE.DirectionalLight(0xfffde7, 1.0);
 sun.position.set(60,80,40); sun.castShadow=true;
@@ -225,9 +197,6 @@ sun.shadow.camera.top=80; sun.shadow.camera.bottom=-80;
 sun.shadow.bias=-0.0005; scene.add(sun);
 scene.add(new THREE.HemisphereLight(0x87ceeb,0x4a7a2a,0.4));
 
-// ══════════════════════════════════════════════════════════════
-// MATERIALS
-// ══════════════════════════════════════════════════════════════
 const M = {
   grass:   new THREE.MeshStandardMaterial({color:0x4caf50,roughness:0.9}),
   dirt:    new THREE.MeshStandardMaterial({color:0x6d4c41,roughness:1}),
@@ -240,86 +209,64 @@ const M = {
   orange:  new THREE.MeshStandardMaterial({color:0xffa726,roughness:0.7}),
   purple:  new THREE.MeshStandardMaterial({color:0xab47bc,roughness:0.7}),
   stone:   new THREE.MeshStandardMaterial({color:0x78909c,roughness:0.95}),
-  brick:   new THREE.MeshStandardMaterial({color:0xc62828,roughness:0.9}),
   skin:    new THREE.MeshStandardMaterial({color:0xffcc99,roughness:0.8}),
-  darkSkin:new THREE.MeshStandardMaterial({color:0xd4956a,roughness:0.8}),
-  nail:    new THREE.MeshStandardMaterial({color:0xf5c5a3,roughness:0.7}),
 };
 
-// ══════════════════════════════════════════════════════════════
-// HELPERS
-// ══════════════════════════════════════════════════════════════
-function box(w,h,d,mat,x,y,z,rx=0,ry=0){
+function box(w,h,d,mat,x,y,z){
   const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
-  m.position.set(x,y,z); m.rotation.set(rx,ry,0);
-  m.castShadow=true; m.receiveShadow=true; scene.add(m); return m;
+  m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true; scene.add(m); return m;
 }
-function cyl(rt,rb,h,seg,mat,x,y,z,rx=0){
+function cyl(rt,rb,h,seg,mat,x,y,z){
   const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg),mat);
-  m.position.set(x,y,z); m.rotation.x=rx;
-  m.castShadow=true; m.receiveShadow=true; scene.add(m); return m;
+  m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true; scene.add(m); return m;
 }
 function sph(r,seg,mat,x,y,z){
   const m=new THREE.Mesh(new THREE.SphereGeometry(r,seg,seg),mat);
   m.position.set(x,y,z); m.castShadow=true; scene.add(m); return m;
 }
 
-// ══════════════════════════════════════════════════════════════
-// GROUND + PATH
-// ══════════════════════════════════════════════════════════════
 const ground=new THREE.Mesh(new THREE.PlaneGeometry(200,200),M.grass);
 ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
 box(4,0.04,80,M.dirt,0,0.01,0);
 
-// Boundary walls
 [[0,1,55,110,2,1],[0,1,-55,110,2,1],[55,1,0,1,2,110],[-55,1,0,1,2,110]]
   .forEach(([x,y,z,w,h,d])=>box(w,h,d,M.concrete,x,y,z));
 
-// ══════════════════════════════════════════════════════════════
-// STONES (collidable)
-// ══════════════════════════════════════════════════════════════
-const stoneObjects = []; // {mesh, radius}
+// Collidables: stones + blocks + NPCs
+const collidables = [];
+
 function makeStone(x,z,r){
   const s=new THREE.Mesh(
     new THREE.SphereGeometry(r,10,8),
-    new THREE.MeshStandardMaterial({color:0x78909c+(Math.random()>0.5?0x101010:0),roughness:0.95,metalness:0.05})
+    new THREE.MeshStandardMaterial({color:0x78909c+(Math.random()>0.5?0x101010:0),roughness:0.95})
   );
   s.scale.set(1,0.65+Math.random()*0.3,1);
   s.position.set(x,r*0.4,z);
   s.castShadow=true; s.receiveShadow=true; scene.add(s);
-  stoneObjects.push({mesh:s, radius:r});
+  collidables.push({mesh:s, radius:r, type:'stone'});
   return s;
 }
-const stonePos = [
-  [-5,3,1.2],[-8,-4,0.9],[4,3,1.5],[10,-7,0.8],[-12,2,1.1],
-  [6,-2,0.7],[-3,-8,1.3],[15,5,1.0],[-18,3,0.9],[8,12,1.4],
-  [-10,10,1.0],[14,-12,0.8],[-6,16,1.2],[3,-15,1.1],[20,2,0.9],
-  [-22,-4,1.3],[12,8,0.7],[-14,-8,1.5],[18,-6,1.0],[-8,20,0.8]
-];
+const stonePos=[[-5,3,1.2],[-8,-4,0.9],[4,3,1.5],[10,-7,0.8],[-12,2,1.1],
+  [6,-2,0.7],[-3,-8,1.3],[15,5,1.0],[-18,3,0.9],[8,12,1.4],[-10,10,1.0],
+  [14,-12,0.8],[-6,16,1.2],[3,-15,1.1],[20,2,0.9],[-22,-4,1.3],[12,8,0.7]];
 stonePos.forEach(([x,z,r])=>makeStone(x,z,r));
 
-// ══════════════════════════════════════════════════════════════
-// DESTRUCTIBLE WALLS
-// ══════════════════════════════════════════════════════════════
 const destructibles=[];
 function makeDestructWall(px,pz,ry=0){
   const g=new THREE.Group(); g.position.set(px,0,pz); g.rotation.y=ry; scene.add(g);
-  const bm=new THREE.MeshStandardMaterial({color:0xc62828,roughness:0.9});
   for(let r=0;r<4;r++) for(let c=0;c<6;c++){
     const off=r%2===0?0:0.49;
-    const br=new THREE.Mesh(new THREE.BoxGeometry(0.94,0.54,0.44),bm.clone());
+    const br=new THREE.Mesh(new THREE.BoxGeometry(0.94,0.54,0.44),
+      new THREE.MeshStandardMaterial({color:0xc62828,roughness:0.9}));
     br.position.set(c*0.96-2.65+off,r*0.56+0.28,0);
     br.castShadow=true; br.receiveShadow=true;
     br.userData={vel:new THREE.Vector3(),avel:new THREE.Vector3(),falling:false,alive:true};
     g.add(br); destructibles.push({mesh:br});
   }
 }
-[[-14,-8,0],[-14,-13,0],[14,-8,0],[14,-13,0],[0,-22,Math.PI/2],[0,-27,Math.PI/2],[-7,-18,0],[7,-18,0]]
+[[-14,-8,0],[-14,-13,0],[14,-8,0],[14,-13,0],[0,-22,Math.PI/2],[0,-27,Math.PI/2]]
   .forEach(([x,z,r])=>makeDestructWall(x,z,r));
 
-// ══════════════════════════════════════════════════════════════
-// TARGETS
-// ══════════════════════════════════════════════════════════════
 const targets=[];
 function makeTarget(x,y,z,moving=false){
   const g=new THREE.Group(); g.position.set(x,y,z); scene.add(g);
@@ -330,45 +277,44 @@ function makeTarget(x,y,z,moving=false){
       new THREE.MeshStandardMaterial({color:c,roughness:0.5}));
     ring.rotation.x=Math.PI/2; g.add(ring);
   });
-  g.userData={health:3,alive:true,moving,baseX:x,phase:Math.random()*Math.PI*2,speed:0.4+Math.random()*0.8,range:2+Math.random()*2,spin:Math.random()>0.5,spinSpeed:(Math.random()-0.5)*1.5};
+  g.userData={health:3,alive:true,moving,baseX:x,phase:Math.random()*Math.PI*2,speed:0.4+Math.random()*0.8,range:2+Math.random()*2};
   targets.push(g); return g;
 }
 for(let i=0;i<7;i++) makeTarget(-14+i*4.5,1.6,-20);
 for(let i=0;i<4;i++) makeTarget(-8+i*5,1.9,-32,true);
 targets.forEach(t=>{t.userData.baseX=t.position.x;});
 
-// ══════════════════════════════════════════════════════════════
-// PHYSICS OBJECTS (grabbable by free hand)
-// ══════════════════════════════════════════════════════════════
+// Physics objects (grabbable)
 const physObjects=[];
-const GRAB_RADIUS = 0.35; // very close grab range
+const GRAB_RADIUS = 0.4;
 
-function makePhys(mesh,type='block'){
-  const p={mesh,vel:new THREE.Vector3(),avel:new THREE.Vector3(),grounded:false,heldBy:null,type};
-  physObjects.push(p); return p;
+function makePhys(mesh,type='block',radius=0.5){
+  const p={mesh,vel:new THREE.Vector3(),avel:new THREE.Vector3(),grounded:false,
+    heldBy:null,type,radius,mass:type==='sword'?2:type==='block'?5:1};
+  physObjects.push(p);
+  collidables.push({mesh,radius,type:'phys',physRef:p});
+  return p;
 }
 
 function makeBlock(x,y,z,mat,w=1,h=1,d=1){
   const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat.clone());
   m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true; scene.add(m);
-  return makePhys(m,'block');
+  const r=Math.max(w,h,d)*0.6;
+  return makePhys(m,'block',r);
 }
 
 function makeSword(x,y,z,bladeCol,handleCol){
   const g=new THREE.Group(); g.position.set(x,y,z); scene.add(g);
   const blade=new THREE.Mesh(new THREE.BoxGeometry(0.1,1.7,0.055),
     new THREE.MeshStandardMaterial({color:bladeCol,metalness:0.95,roughness:0.05,emissive:bladeCol,emissiveIntensity:0.12}));
-  blade.position.y=0.85; blade.castShadow=true; g.add(blade);
+  blade.position.y=0.85; blade.castShadow=true; blade.name='blade'; g.add(blade);
   const handle=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.09,0.45,10),
     new THREE.MeshStandardMaterial({color:handleCol,roughness:0.6}));
   handle.castShadow=true; g.add(handle);
   const guard=new THREE.Mesh(new THREE.BoxGeometry(0.44,0.07,0.1),
     new THREE.MeshStandardMaterial({color:0x8d6e63,metalness:0.5}));
   guard.position.y=0.23; g.add(guard);
-  const pommel=new THREE.Mesh(new THREE.SphereGeometry(0.11,10,10),
-    new THREE.MeshStandardMaterial({color:handleCol,metalness:0.4}));
-  pommel.position.y=-0.27; g.add(pommel);
-  return makePhys(g,'sword');
+  return makePhys(g,'sword',0.9);
 }
 
 const bmats=[M.red,M.blue,M.yellow,M.orange,M.purple,M.wood,M.concrete,M.metal];
@@ -381,21 +327,17 @@ makeSword(-3,1.5,2,0xc0c0c0,0x8b0000);
 makeSword(3,1.5,2,0x4169e1,0x000088);
 makeSword(0,1.5,-3,0x50c878,0x006400);
 
-// Bunkers + environment
 function makeBunker(x,z){
   box(6,1.5,1,M.concrete,x,0.75,z);
   box(1,1.5,3,M.concrete,x-2.5,0.75,z+1);
   box(1,1.5,3,M.concrete,x+2.5,0.75,z+1);
 }
-makeBunker(-8,-6); makeBunker(8,-6); makeBunker(0,-14);
+makeBunker(-8,-6); makeBunker(8,-6);
 
-// Barrels
-[[6,0,-5,0x388e3c],[7,0,-5,0x388e3c],[6,0,-6,0xd32f2f],
- [-6,0,-5,0x388e3c],[-7,0,-5,0x388e3c],[-6,0,-6,0xd32f2f]].forEach(([x,,z,c])=>{
+[[6,0,-5,0x388e3c],[7,0,-5,0x388e3c],[-6,0,-5,0x388e3c],[-7,0,-5,0x388e3c]].forEach(([x,,z,c])=>{
   cyl(0.34,0.37,0.9,16,new THREE.MeshStandardMaterial({color:c,roughness:0.6,metalness:0.4}),x,0.45,z);
 });
 
-// Trees
 function makeTree(x,z){
   const h=4+Math.random()*3;
   cyl(0.18,0.28,h,8,new THREE.MeshStandardMaterial({color:0x4e342e,roughness:1}),x,h/2,z);
@@ -403,80 +345,55 @@ function makeTree(x,z){
 }
 for(let i=0;i<28;i++){const a=Math.random()*Math.PI*2,r=28+Math.random()*20;makeTree(Math.cos(a)*r,Math.sin(a)*r);}
 
-// Lamps
 function makeLamp(x,z){
   cyl(0.05,0.08,4.5,8,M.metal,x,2.25,z);
   const pt=new THREE.PointLight(0xfff8e1,1.4,14); pt.position.set(x,4.5,z); scene.add(pt);
   const g=new THREE.Mesh(new THREE.SphereGeometry(0.18,8,8),new THREE.MeshBasicMaterial({color:0xfff9c4}));
   g.position.set(x,4.5,z); scene.add(g);
 }
-[[-8,0],[8,0],[0,-10],[0,12],[-15,6],[15,6]].forEach(([x,z])=>makeLamp(x,z));
+[[-8,0],[8,0],[0,-10],[0,12]].forEach(([x,z])=>makeLamp(x,z));
 
-// ══════════════════════════════════════════════════════════════
-// HAND MODEL BUILDER
-// ══════════════════════════════════════════════════════════════
-function buildHandModel(side='right', skinColor=0xffcc99){
+// Hand model (simple, no joystick geometry)
+function buildHandModel(side='right'){
   const g = new THREE.Group();
-  const smat = new THREE.MeshStandardMaterial({color:skinColor,roughness:0.8});
-  const nmat = new THREE.MeshStandardMaterial({color:0xf0bea0,roughness:0.7});
+  const smat = M.skin.clone();
   const flip = side==='left'?-1:1;
-
+  
   // Palm
-  const palm=new THREE.Mesh(new THREE.BoxGeometry(0.085,0.025,0.1),smat.clone());
-  palm.position.set(0,0,0); g.add(palm);
+  const palm=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.022,0.095),smat);
+  palm.position.set(0,-0.01,0); g.add(palm);
 
-  // Fingers
+  // Fingers (simplified)
   const fingerDefs=[
-    {ox:flip*-0.036,oz:-0.045,segs:3,lens:[0.04,0.03,0.025],thick:0.016},
-    {ox:flip*-0.012,oz:-0.052,segs:3,lens:[0.045,0.033,0.027],thick:0.017},
-    {ox:flip*0.012,oz:-0.05, segs:3,lens:[0.042,0.031,0.026],thick:0.016},
-    {ox:flip*0.036,oz:-0.044,segs:3,lens:[0.036,0.027,0.022],thick:0.015},
+    {ox:flip*-0.033,oz:-0.043,lens:[0.035,0.027,0.022]},
+    {ox:flip*-0.011,oz:-0.048,lens:[0.041,0.03,0.024]},
+    {ox:flip*0.011,oz:-0.046,lens:[0.038,0.028,0.023]},
+    {ox:flip*0.033,oz:-0.041,lens:[0.032,0.024,0.02]},
   ];
-  fingerDefs.forEach(({ox,oz,lens,thick})=>{
+  fingerDefs.forEach(({ox,oz,lens})=>{
     let pz=oz;
-    lens.forEach((len,si)=>{
-      const seg=new THREE.Mesh(new THREE.BoxGeometry(thick,thick,len),smat.clone());
-      seg.position.set(ox,0,pz-len/2);
-      g.add(seg);
-      if(si<lens.length-1){
-        const jt=new THREE.Mesh(new THREE.SphereGeometry(thick*0.55,6,6),smat.clone());
-        jt.position.set(ox,0,pz-len); g.add(jt);
-      } else {
-        // Fingernail
-        const nail=new THREE.Mesh(new THREE.BoxGeometry(thick*0.7,0.004,len*0.6),nmat.clone());
-        nail.position.set(ox,thick*0.52,pz-len*0.7); g.add(nail);
-      }
+    lens.forEach(len=>{
+      const seg=new THREE.Mesh(new THREE.BoxGeometry(0.014,0.014,len),smat);
+      seg.position.set(ox,-0.01,pz-len/2); g.add(seg);
       pz-=len;
     });
   });
 
   // Thumb
-  const thumbSegs=[{len:0.035,thick:0.02},{len:0.028,thick:0.018}];
-  let tx=flip*0.052, ty=0.006, tz=-0.015;
-  thumbSegs.forEach(({len,thick},si)=>{
-    const seg=new THREE.Mesh(new THREE.BoxGeometry(thick,thick,len),smat.clone());
-    const angle=flip*(si===0?0.6:0.4);
-    seg.position.set(tx,ty,tz-len/2); seg.rotation.y=angle; g.add(seg);
-    tz-=len*Math.cos(Math.abs(angle)); tx+=len*Math.sin(Math.abs(angle))*flip;
-    if(si===thumbSegs.length-1){
-      const nail=new THREE.Mesh(new THREE.BoxGeometry(thick*0.7,0.004,len*0.6),nmat.clone());
-      nail.position.set(tx-flip*0.01,ty+thick*0.52,tz+len*0.3); g.add(nail);
-    }
-  });
+  const t1=new THREE.Mesh(new THREE.BoxGeometry(0.018,0.018,0.032),smat);
+  t1.position.set(flip*0.048,-0.01,-0.012); t1.rotation.y=flip*0.5; g.add(t1);
+  const t2=new THREE.Mesh(new THREE.BoxGeometry(0.016,0.016,0.026),smat);
+  t2.position.set(flip*0.062,-0.01,-0.032); t2.rotation.y=flip*0.4; g.add(t2);
 
   // Wrist
-  const wrist=new THREE.Mesh(new THREE.CylinderGeometry(0.032,0.028,0.06,10),smat.clone());
-  wrist.rotation.x=Math.PI/2; wrist.position.set(0,0,0.045); g.add(wrist);
+  const wrist=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.027,0.055,10),smat);
+  wrist.rotation.x=Math.PI/2; wrist.position.set(0,-0.01,0.04); g.add(wrist);
 
-  // Orient: fingers point forward (-Z), back of hand up (+Y)
   g.rotation.x = -Math.PI/2;
-
   return g;
 }
 
-// ══════════════════════════════════════════════════════════════
-// GUN BUILDER
-// ══════════════════════════════════════════════════════════════
+// Gun models
 const WEAPONS = [
   {name:'PISTOL',  ammo:12,maxAmmo:12,reserve:60, damage:30,fireRate:0.25,spread:0.018,auto:false},
   {name:'RIFLE',   ammo:30,maxAmmo:30,reserve:150,damage:18,fireRate:0.09,spread:0.009,auto:true },
@@ -491,45 +408,41 @@ function buildGunModel(type){
   const hm=new THREE.MeshStandardMaterial({color:0x3e2723,roughness:0.85});
   const mm=new THREE.MeshStandardMaterial({color:0x37474f,roughness:0.3,metalness:0.9});
 
-  if(type===0){ // Pistol
+  if(type===0){
     g.add(obj(new THREE.BoxGeometry(0.05,0.085,0.16),bm,[0,0,0]));
     g.add(obj(new THREE.BoxGeometry(0.04,0.11,0.065),hm,[0,-0.1,-0.02],[0.2,0,0]));
     g.add(obj(new THREE.CylinderGeometry(0.012,0.012,0.1,8),mm,[0,0.02,-0.13],[Math.PI/2,0,0]));
-    g.add(obj(new THREE.BoxGeometry(0.04,0.025,0.16),mm,[0,0.056,0]));
-  } else if(type===1){ // Rifle
+  } else if(type===1){
     g.add(obj(new THREE.BoxGeometry(0.062,0.086,0.5),bm,[0,0,0]));
     g.add(obj(new THREE.BoxGeometry(0.052,0.12,0.072),hm,[0,-0.105,0.05],[0.3,0,0]));
     g.add(obj(new THREE.CylinderGeometry(0.015,0.015,0.3,8),mm,[0,0.03,-0.24],[Math.PI/2,0,0]));
     g.add(obj(new THREE.BoxGeometry(0.038,0.095,0.062),hm,[0,-0.098,0.11]));
     g.add(obj(new THREE.BoxGeometry(0.052,0.062,0.19),bm,[0,-0.01,0.29]));
     g.add(obj(new THREE.CylinderGeometry(0.02,0.02,0.13,8),mm,[0,0.072,-0.01],[Math.PI/2,0,0]));
-    g.add(obj(new THREE.BoxGeometry(0.022,0.052,0.11),mm,[0,-0.068,-0.17]));
-  } else { // Shotgun
+    // Magazine slot (visible for reloading)
+    const slot=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.1,0.065),
+      new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:0.6}));
+    slot.position.set(0,-0.1,0.11); slot.name='magslot'; g.add(slot);
+  } else {
     g.add(obj(new THREE.BoxGeometry(0.072,0.072,0.56),bm,[0,0,0]));
     g.add(obj(new THREE.BoxGeometry(0.052,0.13,0.078),hm,[0,-0.108,0.08],[0.2,0,0]));
     g.add(obj(new THREE.CylinderGeometry(0.021,0.021,0.4,8),mm,[0.032,0.02,-0.19],[Math.PI/2,0,0]));
     g.add(obj(new THREE.CylinderGeometry(0.021,0.021,0.4,8),mm,[-0.032,0.02,-0.19],[Math.PI/2,0,0]));
-    g.add(obj(new THREE.BoxGeometry(0.062,0.072,0.21),hm,[0,0,0.33]));
   }
 
-  // Muzzle flash
   const fl=new THREE.Mesh(new THREE.SphereGeometry(0.055,6,6),
     new THREE.MeshBasicMaterial({color:0xffff00,transparent:true,opacity:0}));
   fl.name='flash'; fl.position.z=-0.32; g.add(fl);
   const pl=new THREE.PointLight(0xffaa00,0,3); pl.name='mlight'; g.add(pl);
-
   return g;
 }
 
 function obj(geo,mat,pos=[0,0,0],rot=[0,0,0]){
   const m=new THREE.Mesh(geo,mat);
-  m.position.set(...pos); m.rotation.set(...rot);
-  m.castShadow=true; return m;
+  m.position.set(...pos); m.rotation.set(...rot); m.castShadow=true; return m;
 }
 
-// ══════════════════════════════════════════════════════════════
-// AMMO MAGAZINE MODEL (for free hand)
-// ══════════════════════════════════════════════════════════════
+// Magazine model
 function buildMagModel(){
   const g=new THREE.Group();
   const mat=new THREE.MeshStandardMaterial({color:0x1a237e,roughness:0.5,metalness:0.6});
@@ -541,61 +454,53 @@ function buildMagModel(){
     new THREE.MeshStandardMaterial({color:0xffd700,metalness:0.9,roughness:0.1}));
   bullet.position.set(0,0.072,0); g.add(bullet);
   g.rotation.x=-Math.PI/2;
+  g.userData = {isMagazine:true};
   return g;
 }
 
-// ══════════════════════════════════════════════════════════════
-// VR CONTROLLER SETUP
-// ══════════════════════════════════════════════════════════════
+// VR Controllers
 const ctrlFactory = new XRControllerModelFactory();
-const vrControllers=[]; // [0]=left, [1]=right
+const vrControllers=[];
 const vrGrips=[];
 const ctrlPrevPos=[new THREE.Vector3(),new THREE.Vector3()];
 const ctrlVel=[new THREE.Vector3(),new THREE.Vector3()];
-let grabbedObject=null; // only free hand can grab
-let heldByFreeHand=false;
-let reloading=false, reloadTimer=0;
+let grabbedObject=null;
 let lastShot=0;
+let magInHand=null; // magazine object in free hand
+let magVisible=false;
 
-// Attach hands/gun after game starts
-let gunGroup=null;    // attached to gun controller
-let handGroup=null;   // attached to free controller
-let magGroup=null;    // magazine on free hand
+let gunGroup=null;
+let handGroup=null;
 let gunModelGroup=null;
-let needsHandRefresh=false;
+let handModelGroup=null;
 
 function setupVRHands(){
   // Gun hand
   gunGroup=new THREE.Group();
-  gunGroup.position.set(0,-0.01,-0.04);
-  if(dominantHand==='right'){
-    gunGroup.rotation.set(-Math.PI*0.05,0,0);
-  } else {
-    gunGroup.rotation.set(-Math.PI*0.05,Math.PI,0);
-  }
+  gunGroup.position.set(0,-0.02,-0.05);
   gunModelGroup=buildGunModel(weaponIndex);
   gunGroup.add(gunModelGroup);
   vrControllers[gunHandIndex].add(gunGroup);
 
-  // Free hand = hand model
+  // Free hand
   handGroup=new THREE.Group();
-  handGroup.position.set(0,-0.01,-0.04);
-  const handModel=buildHandModel(dominantHand==='right'?'left':'right');
-  handGroup.add(handModel);
-  // Magazine on free hand palm
-  magGroup=buildMagModel();
-  magGroup.position.set(dominantHand==='right'?0.02:-0.02,-0.03,0);
-  handGroup.add(magGroup);
+  handGroup.position.set(0,-0.02,-0.05);
+  handModelGroup=buildHandModel(dominantHand==='right'?'left':'right');
+  handGroup.add(handModelGroup);
   vrControllers[freeHandIndex].add(handGroup);
 
-  // Ray on free hand for grab
-  const ray=new THREE.Line(
-    new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0),new THREE.Vector3(0,0,-1)]),
-    new THREE.LineBasicMaterial({color:0x00e5ff,transparent:true,opacity:0.4})
-  );
-  ray.scale.z=0.5; // very short = small grab range
-  ray.name='ray';
-  vrControllers[freeHandIndex].add(ray);
+  // Magazine spawns when empty
+  checkMagazineSpawn();
+}
+
+function checkMagazineSpawn(){
+  if(cw.ammo===0 && !magInHand && !magVisible){
+    // Spawn magazine in free hand
+    magInHand = buildMagModel();
+    magInHand.position.set(dominantHand==='right'?0.02:-0.02,-0.04,-0.01);
+    handGroup.add(magInHand);
+    magVisible=true;
+  }
 }
 
 for(let i=0;i<2;i++){
@@ -609,19 +514,16 @@ for(let i=0;i<2;i++){
   vrGrips.push(grip);
 }
 
-// GRIP = grab (free hand only)
 vrControllers[0].addEventListener('squeezestart',()=>{ if(freeHandIndex===0) tryGrab(0); });
 vrControllers[0].addEventListener('squeezeend',  ()=>{ if(freeHandIndex===0) releaseGrab(0); });
 vrControllers[1].addEventListener('squeezestart',()=>{ if(freeHandIndex===1) tryGrab(1); });
 vrControllers[1].addEventListener('squeezeend',  ()=>{ if(freeHandIndex===1) releaseGrab(1); });
 
-// TRIGGER = shoot (gun hand only) or reload check
-vrControllers[0].addEventListener('selectstart',()=>{ if(gunHandIndex===0) vrShoot(); else checkVRReload(); });
-vrControllers[1].addEventListener('selectstart',()=>{ if(gunHandIndex===1) vrShoot(); else checkVRReload(); });
+vrControllers[0].addEventListener('selectstart',()=>{ if(gunHandIndex===0) vrShoot(); else tryReloadInsert(); });
+vrControllers[1].addEventListener('selectstart',()=>{ if(gunHandIndex===1) vrShoot(); else tryReloadInsert(); });
 
 function tryGrab(ctrlIdx){
-  // Only free hand
-  if(ctrlIdx!==freeHandIndex) return;
+  if(ctrlIdx!==freeHandIndex||grabbedObject) return;
   const ctrl=vrControllers[ctrlIdx];
   const ctrlPos=new THREE.Vector3().setFromMatrixPosition(ctrl.matrixWorld);
 
@@ -636,8 +538,8 @@ function tryGrab(ctrlIdx){
     grabbedObject=closest;
     closest.vel.set(0,0,0); closest.avel.set(0,0,0);
     ctrl.attach(closest.mesh);
-    // Hide mag when grabbing
-    if(magGroup) magGroup.visible=false;
+    // Hide mag when grabbing other objects
+    if(magInHand&&handGroup) handGroup.remove(magInHand); magVisible=false;
   }
 }
 
@@ -645,17 +547,33 @@ function releaseGrab(ctrlIdx){
   if(!grabbedObject||grabbedObject.heldBy!==ctrlIdx) return;
   const go=grabbedObject;
   scene.attach(go.mesh);
-  const throwVel=ctrlVel[ctrlIdx].clone().multiplyScalar(3.5);
+  const throwVel=ctrlVel[ctrlIdx].clone().multiplyScalar(4);
   go.vel.copy(throwVel);
-  go.avel.set((Math.random()-0.5)*6,(Math.random()-0.5)*6,(Math.random()-0.5)*6);
+  go.avel.set((Math.random()-0.5)*7,(Math.random()-0.5)*7,(Math.random()-0.5)*7);
   go.heldBy=null;
   grabbedObject=null;
-  if(magGroup) magGroup.visible=true;
+  checkMagazineSpawn();
 }
 
-// Thumbstick weapon switching (gun hand)
+function tryReloadInsert(){
+  // Check if free hand is close to gun hand and mag is visible
+  if(!magVisible||!magInHand) return;
+  const gPos=new THREE.Vector3().setFromMatrixPosition(vrControllers[gunHandIndex].matrixWorld);
+  const fPos=new THREE.Vector3().setFromMatrixPosition(vrControllers[freeHandIndex].matrixWorld);
+  if(gPos.distanceTo(fPos)<0.2){
+    // Insert mag
+    if(handGroup) handGroup.remove(magInHand);
+    magInHand=null; magVisible=false;
+    cw.ammo=cw.maxAmmo;
+    updateAmmoHUD();
+    // Haptic feedback
+    const src=renderer.xr.getSession()?.inputSources?.[gunHandIndex];
+    src?.gamepad?.hapticActuators?.[0]?.pulse(0.3,100);
+  }
+}
+
 let thumbWasNeutral=[true,true];
-function handleThumbstick(src, i){
+function handleThumbstick(src,i){
   if(i!==gunHandIndex||!src.gamepad) return;
   const ay=src.gamepad.axes[3];
   if(ay===undefined) return;
@@ -663,7 +581,6 @@ function handleThumbstick(src, i){
     thumbWasNeutral[i]=false;
     weaponIndex=(weaponIndex+(ay<0?-1:1)+WEAPONS.length)%WEAPONS.length;
     cw={...WEAPONS[weaponIndex]};
-    // Rebuild gun model
     if(gunModelGroup&&gunGroup){ gunGroup.remove(gunModelGroup); gunModelGroup=buildGunModel(weaponIndex); gunGroup.add(gunModelGroup); }
     updateAmmoHUD();
     document.getElementById('eq-weapon').textContent=cw.name;
@@ -671,25 +588,15 @@ function handleThumbstick(src, i){
   if(Math.abs(ay)<0.3) thumbWasNeutral[i]=true;
 }
 
-// VR Reload: bring free hand close to gun hand
-function checkVRReload(){
-  if(reloading||cw.ammo===cw.maxAmmo) return;
-  const gPos=new THREE.Vector3().setFromMatrixPosition(vrControllers[gunHandIndex].matrixWorld);
-  const fPos=new THREE.Vector3().setFromMatrixPosition(vrControllers[freeHandIndex].matrixWorld);
-  if(gPos.distanceTo(fPos)<0.25) startReload();
-}
-
 function vrShoot(){
   const now=performance.now()/1000;
-  if(reloading||now-lastShot<cw.fireRate) return;
-  if(cw.ammo<=0){ startReload(); return; }
+  if(now-lastShot<cw.fireRate) return;
+  if(cw.ammo<=0){ checkMagazineSpawn(); return; }
   lastShot=now; cw.ammo--; updateAmmoHUD();
-  // Flash
   const fl=gunModelGroup?.getObjectByName?.('flash');
   const pl=gunModelGroup?.getObjectByName?.('mlight');
   if(fl){fl.material.opacity=1;setTimeout(()=>fl.material.opacity=0,55);}
   if(pl){pl.intensity=4;setTimeout(()=>pl.intensity=0,55);}
-  // Haptic
   const src=renderer.xr.getSession()?.inputSources?.[gunHandIndex];
   src?.gamepad?.hapticActuators?.[0]?.pulse(0.5,60);
 
@@ -700,25 +607,20 @@ function vrShoot(){
     dir.applyQuaternion(vrControllers[gunHandIndex].getWorldQuaternion(new THREE.Quaternion()));
     spawnBullet(new THREE.Vector3().setFromMatrixPosition(vrControllers[gunHandIndex].matrixWorld).addScaledVector(dir,0.2),dir,false);
   }
+  checkMagazineSpawn();
 }
 
-// ══════════════════════════════════════════════════════════════
-// DESKTOP GUN (camera-mounted)
-// ══════════════════════════════════════════════════════════════
+// Desktop gun
 const desktopGunGroup=new THREE.Group();
 camera.add(desktopGunGroup);
 desktopGunGroup.position.set(0.22,-0.17,-0.42);
-
 function refreshDesktopGun(){
   desktopGunGroup.clear();
-  const gm=buildGunModel(weaponIndex);
-  desktopGunGroup.add(gm);
+  desktopGunGroup.add(buildGunModel(weaponIndex));
 }
 refreshDesktopGun();
 
-// ══════════════════════════════════════════════════════════════
-// BULLETS + PARTICLES
-// ══════════════════════════════════════════════════════════════
+// Bullets
 const bulletGeo=new THREE.SphereGeometry(0.033,5,5);
 const bullets=[];
 const particles=[];
@@ -745,33 +647,12 @@ function showHit(){
   hm.classList.add('show'); setTimeout(()=>hm.classList.remove('show'),110);
 }
 
-// ══════════════════════════════════════════════════════════════
-// RELOAD
-// ══════════════════════════════════════════════════════════════
-function startReload(){
-  if(reloading||cw.reserve<=0) return;
-  reloading=true;
-  const rt=cw.name==='PISTOL'?1.1:cw.name==='RIFLE'?1.8:2.0;
-  document.getElementById('ammo-display').textContent='RELOADING...';
-  document.getElementById('reload-bar').style.display='block';
-  const rf=document.getElementById('reload-fill');
-  rf.style.transition='none'; rf.style.width='0%';
-  setTimeout(()=>{rf.style.transition=`width ${rt}s linear`;rf.style.width='100%';},30);
-  setTimeout(()=>{
-    const need=cw.maxAmmo-cw.ammo,got=Math.min(need,cw.reserve);
-    cw.ammo+=got; cw.reserve-=got; reloading=false;
-    document.getElementById('reload-bar').style.display='none';
-    rf.style.width='0%'; updateAmmoHUD();
-  },rt*1000);
-}
 function updateAmmoHUD(){
-  if(!reloading) document.getElementById('ammo-display').textContent=`${cw.ammo} / ${cw.reserve}`;
+  document.getElementById('ammo-display').textContent=`${cw.ammo} / ${cw.reserve}`;
   document.getElementById('eq-weapon').textContent=WEAPONS[weaponIndex].name;
 }
 
-// ══════════════════════════════════════════════════════════════
-// NPCs
-// ══════════════════════════════════════════════════════════════
+// NPCs with physics
 const npcs=[];
 let waveNum=1,waveKills=0,waveTarget=5;
 const npcColors=[0xf44336,0x2196f3,0x4caf50,0xffeb3b,0x9c27b0,0xff9800];
@@ -782,20 +663,16 @@ class NPC{
     this.boss=boss; this.color=col;
     this.g=new THREE.Group(); this.g.position.set(x,0,z); scene.add(this.g);
     const sc=boss?1.8:1;
-    this.bm=new THREE.MeshStandardMaterial({color:col,roughness:0.7});
-    this.body=new THREE.Mesh(new THREE.CylinderGeometry(0.27*sc,0.31*sc,1.15*sc,10),this.bm.clone());
+    this.bodyMat=new THREE.MeshStandardMaterial({color:col,roughness:0.7});
+    this.body=new THREE.Mesh(new THREE.CylinderGeometry(0.27*sc,0.31*sc,1.15*sc,10),this.bodyMat.clone());
     this.body.position.y=0.95*sc; this.body.castShadow=true; this.g.add(this.body);
     this.headM=new THREE.Mesh(new THREE.SphereGeometry(0.22*sc,12,12),
       new THREE.MeshStandardMaterial({color:boss?0xff6666:0xffcc99,roughness:0.7}));
     this.headM.position.y=1.65*sc; this.headM.castShadow=true; this.g.add(this.headM);
-    const am=new THREE.MeshStandardMaterial({color:col,roughness:0.7});
-    this.lA=new THREE.Mesh(new THREE.CylinderGeometry(0.085*sc,0.075*sc,0.78*sc,8),am.clone());
+    this.lA=new THREE.Mesh(new THREE.CylinderGeometry(0.085*sc,0.075*sc,0.78*sc,8),
+      new THREE.MeshStandardMaterial({color:col,roughness:0.7}));
     this.lA.position.set(-0.36*sc,0.9*sc,0); this.lA.rotation.z=0.4; this.lA.castShadow=true; this.g.add(this.lA);
-    this.rA=this.lA.clone(); this.rA.material=am.clone(); this.rA.position.x=0.36*sc; this.rA.rotation.z=-0.4; this.g.add(this.rA);
-    this.lL=new THREE.Mesh(new THREE.CylinderGeometry(0.09*sc,0.08*sc,0.82*sc,8),am.clone());
-    this.lL.position.set(-0.17*sc,0.41*sc,0); this.lL.castShadow=true; this.g.add(this.lL);
-    this.rL=this.lL.clone(); this.rL.material=am.clone(); this.rL.position.x=0.17*sc; this.g.add(this.rL);
-    // healthbar
+    this.rA=this.lA.clone(); this.rA.position.x=0.36*sc; this.rA.rotation.z=-0.4; this.g.add(this.rA);
     this.hbg=new THREE.Group(); this.hbg.position.y=(boss?3.8:2.3)*sc; this.g.add(this.hbg);
     const bw=boss?1.2:0.72;
     this.hbg.add(new THREE.Mesh(new THREE.PlaneGeometry(bw,0.11),new THREE.MeshBasicMaterial({color:0x222222})));
@@ -803,7 +680,11 @@ class NPC{
     this.hbar.position.z=0.01; this.hbg.add(this.hbar);
     this.t=Math.random()*100; this.dir=Math.random()*Math.PI*2; this.tdir=this.dir;
     this.shootTimer=Math.random()*3;
+    this.radius=0.35*sc;
+    this.knocked=false; this.knockTimer=0;
+    this.vel=new THREE.Vector3(); this.avel=new THREE.Vector3();
     npcs.push(this);
+    collidables.push({mesh:this.g,radius:this.radius,type:'npc',npcRef:this});
   }
   takeDamage(amt){
     if(!this.alive) return;
@@ -812,44 +693,72 @@ class NPC{
     this.hbar.scale.x=p; this.hbar.position.x=-bw/2*(1-p);
     this.hbar.material.color.setHex(p>0.5?0x00e676:p>0.25?0xffeb3b:0xff1744);
     if(this.health<=0) this.die();
-    else{ this.body.material.emissive.setHex(0xff0000); this.body.material.emissiveIntensity=0.6;
-      setTimeout(()=>{this.body.material.emissive.setHex(0);this.body.material.emissiveIntensity=0;},140); }
+    else{ this.bodyMat.emissive.setHex(0xff0000); this.bodyMat.emissiveIntensity=0.6;
+      setTimeout(()=>{this.bodyMat.emissive.setHex(0);this.bodyMat.emissiveIntensity=0;},140); }
+  }
+  knockDown(impulse){
+    if(this.knocked) return;
+    this.knocked=true; this.knockTimer=2.0;
+    this.vel.copy(impulse);
+    this.avel.set((Math.random()-0.5)*5,(Math.random()-0.5)*5,(Math.random()-0.5)*5);
   }
   die(){
     this.alive=false; waveKills++;
-    const sc=document.getElementById('scoreVal');
     document.getElementById('kills').textContent=parseInt(document.getElementById('kills').textContent)+1;
-    sc.textContent=parseInt(sc.textContent)+(this.boss?1000:100);
+    document.getElementById('scoreVal').textContent=parseInt(document.getElementById('scoreVal').textContent)+(this.boss?1000:100);
     this.g.rotation.x=Math.PI/2; this.hbg.visible=false;
     spawnParticles(this.g.position.clone(),this.color,this.boss?25:10);
-    setTimeout(()=>{scene.remove(this.g);npcs.splice(npcs.indexOf(this),1);checkWave();},2500);
+    setTimeout(()=>{
+      scene.remove(this.g); npcs.splice(npcs.indexOf(this),1);
+      collidables.splice(collidables.findIndex(c=>c.npcRef===this),1);
+      checkWave();
+    },2500);
   }
   update(dt){
     if(!this.alive) return;
     this.t+=dt;
+    
+    if(this.knocked){
+      this.knockTimer-=dt;
+      this.vel.y-=18*dt;
+      this.g.position.addScaledVector(this.vel,dt);
+      this.g.rotation.x+=this.avel.x*dt; this.g.rotation.y+=this.avel.y*dt;
+      this.vel.multiplyScalar(0.96); this.avel.multiplyScalar(0.94);
+      if(this.g.position.y<0.1){ this.g.position.y=0.1; this.vel.y=Math.abs(this.vel.y)*0.3; this.vel.x*=0.7; this.vel.z*=0.7; }
+      if(this.knockTimer<=0){ this.knocked=false; this.g.rotation.x=0; this.g.rotation.y=this.dir+Math.PI/2; this.g.position.y=0; }
+      this.hbg.quaternion.copy(camera.quaternion);
+      return;
+    }
+
     this.lA.rotation.x=Math.sin(this.t*2.5)*0.4; this.rA.rotation.x=-Math.sin(this.t*2.5)*0.4;
-    this.lL.rotation.x=Math.sin(this.t*3)*0.35; this.rL.rotation.x=-Math.sin(this.t*3)*0.35;
     this.g.position.y=Math.abs(Math.sin(this.t*4))*0.06;
     this.tdir+=(Math.random()-0.5)*0.05; this.dir+=(this.tdir-this.dir)*0.04;
     const sp=this.boss?2.2:1.6;
     let nx=this.g.position.x+Math.cos(this.dir)*sp*dt;
     let nz=this.g.position.z+Math.sin(this.dir)*sp*dt;
-    // stone collision
-    for(const st of stoneObjects){
-      const dx=nx-st.mesh.position.x, dz=nz-st.mesh.position.z;
+    
+    // Collision check
+    for(const c of collidables){
+      if(c.npcRef===this) continue;
+      const dx=nx-c.mesh.position.x, dz=nz-c.mesh.position.z;
       const dist=Math.sqrt(dx*dx+dz*dz);
-      if(dist<st.radius+0.35){ this.tdir+=Math.PI+(Math.random()-0.5); nx=this.g.position.x; nz=this.g.position.z; }
+      if(dist<c.radius+this.radius&&dist>0){
+        const push=c.radius+this.radius-dist+0.01;
+        nx+=dx/dist*push; nz+=dz/dist*push;
+        this.tdir+=Math.PI+(Math.random()-0.5)*0.5;
+      }
     }
     this.g.position.x=nx; this.g.position.z=nz;
     if(Math.abs(this.g.position.x)>48||Math.abs(this.g.position.z)>48) this.tdir+=Math.PI;
     this.g.rotation.y=this.dir+Math.PI/2;
     this.hbg.quaternion.copy(camera.quaternion);
+    
     this.shootTimer-=dt;
     if(this.shootTimer<=0){
       this.shootTimer=(this.boss?1.5:3+Math.random()*2);
       this.npcShoot();
     }
-    // Chase player
+    
     const tp=playerRig.position.clone().sub(this.g.position);
     if(tp.length()<30) this.tdir=Math.atan2(tp.z,tp.x)-Math.PI/2;
   }
@@ -882,22 +791,18 @@ function checkWave(){
 }
 for(let i=0;i<6;i++) spawnNPC();
 
-// ══════════════════════════════════════════════════════════════
-// RAYCASTER / HIT DETECTION
-// ══════════════════════════════════════════════════════════════
+// Raycaster
 const sRay=new THREE.Raycaster();
 function getHittables(){
   return[...npcs.filter(n=>n.alive).flatMap(n=>[n.body,n.headM]),
     ...targets.filter(t=>t.userData.alive),
     ...destructibles.map(d=>d.mesh).filter(m=>m.userData.alive),
-    ...physObjects.map(p=>p.mesh),
     ground];
 }
 
 function processBullet(b,hits){
   if(!hits.length) return false;
   const h=hits[0]; const pos=h.point.clone();
-  // NPC hit
   for(const n of npcs){
     if(!n.alive) continue;
     if(h.object===n.body||h.object===n.headM){
@@ -908,7 +813,6 @@ function processBullet(b,hits){
       spawnParticles(pos,0xff3333); return true;
     }
   }
-  // Target
   for(const t of targets){
     if(!t.userData.alive) continue;
     if(h.object.parent===t||h.object===t){
@@ -918,7 +822,6 @@ function processBullet(b,hits){
       return true;
     }
   }
-  // Destructible
   for(const d of destructibles){
     if(h.object===d.mesh&&d.mesh.userData.alive){
       d.mesh.userData.alive=false; d.mesh.userData.falling=true;
@@ -927,14 +830,6 @@ function processBullet(b,hits){
       spawnParticles(pos,0xd84315); showHit(); return true;
     }
   }
-  // Physics block
-  for(const pk of physObjects){
-    if(h.object===pk.mesh){
-      pk.vel.addScaledVector(b.userData.vel.clone().normalize(),5); pk.vel.y+=2.5; pk.grounded=false;
-      spawnParticles(pos,0x9e9e9e); showHit(); return true;
-    }
-  }
-  // Player hit by NPC
   if(b.userData.isNPC){
     const ppos=playerRig.position.clone().add(new THREE.Vector3(0,1.6,0));
     if(pos.distanceTo(ppos)<0.6){
@@ -957,33 +852,33 @@ function destroyTarget(t){
 function checkSwordHits(){
   for(const p of physObjects){
     if(p.type!=='sword') continue;
+    const blade=p.mesh.getObjectByName('blade');
+    if(!blade) continue;
+    const bladePos=new THREE.Vector3();
+    blade.getWorldPosition(bladePos);
     const spd=p.vel.length();
     if(spd<2&&p.heldBy===null) continue;
     for(const n of npcs){
-      if(!n.alive) continue;
-      if(p.mesh.position.distanceTo(n.g.position)<1.3){
-        n.takeDamage(p.heldBy!==null?18:30); showHit();
-        spawnParticles(p.mesh.position.clone(),0xffd700,5);
+      if(!n.alive||n.knocked) continue;
+      if(bladePos.distanceTo(n.g.position)<1.1){
+        n.takeDamage(p.heldBy!==null?20:35); showHit();
+        spawnParticles(bladePos.clone(),0xffd700,5);
       }
     }
   }
 }
 
-// ══════════════════════════════════════════════════════════════
-// DESKTOP INPUT
-// ══════════════════════════════════════════════════════════════
+// Desktop input
 const keys={};
 let recoilZ=0, lastDesktopShot=0, autoFire=null;
-let desktopWeapon={...WEAPONS[0]};
-let dWeapIdx=0;
 
 window.addEventListener('keydown',e=>{
   keys[e.code]=true;
-  if(e.code==='KeyR') startReload();
+  if(e.code==='KeyR'&&cw.ammo<cw.maxAmmo&&cw.reserve>0){ const add=Math.min(cw.maxAmmo-cw.ammo,cw.reserve); cw.ammo+=add; cw.reserve-=add; updateAmmoHUD(); }
   if(e.code==='KeyF'){ if(document.pointerLockElement) document.exitPointerLock(); else renderer.domElement.requestPointerLock(); }
-  if(e.code==='Digit1'){ dWeapIdx=0; cw={...WEAPONS[0]}; refreshDesktopGun(); updateAmmoHUD(); }
-  if(e.code==='Digit2'){ dWeapIdx=1; cw={...WEAPONS[1]}; refreshDesktopGun(); updateAmmoHUD(); }
-  if(e.code==='Digit3'){ dWeapIdx=2; cw={...WEAPONS[2]}; refreshDesktopGun(); updateAmmoHUD(); }
+  if(e.code==='Digit1'){ weaponIndex=0; cw={...WEAPONS[0]}; refreshDesktopGun(); updateAmmoHUD(); }
+  if(e.code==='Digit2'){ weaponIndex=1; cw={...WEAPONS[1]}; refreshDesktopGun(); updateAmmoHUD(); }
+  if(e.code==='Digit3'){ weaponIndex=2; cw={...WEAPONS[2]}; refreshDesktopGun(); updateAmmoHUD(); }
 });
 window.addEventListener('keyup',e=>keys[e.code]=false);
 
@@ -1004,8 +899,8 @@ window.addEventListener('mouseup',()=>{clearInterval(autoFire);autoFire=null;});
 
 function desktopShoot(){
   const now=performance.now()/1000;
-  if(reloading||now-lastDesktopShot<cw.fireRate) return;
-  if(cw.ammo<=0){startReload();return;}
+  if(now-lastDesktopShot<cw.fireRate) return;
+  if(cw.ammo<=0) return;
   lastDesktopShot=now; cw.ammo--; updateAmmoHUD(); recoilZ=0.04;
   const fl=desktopGunGroup.getObjectByName('flash');
   const pl=desktopGunGroup.getObjectByName('mlight');
@@ -1032,14 +927,15 @@ function updateDesktopPlayer(dt){
   if(keys['Space']&&grounded){pVel.y=8;grounded=false;}
   pVel.y-=22*dt; pVel.x*=0.82; pVel.z*=0.82;
 
-  // Stone collision for player
   let np=playerRig.position.clone().addScaledVector(pVel,dt);
-  for(const st of stoneObjects){
-    const dx=np.x-st.mesh.position.x, dz=np.z-st.mesh.position.z;
+  for(const c of collidables){
+    if(c.type==='phys') continue;
+    const dx=np.x-c.mesh.position.x, dz=np.z-c.mesh.position.z;
     const dist=Math.sqrt(dx*dx+dz*dz);
-    if(dist<st.radius+0.4){
-      const push=new THREE.Vector3(dx,0,dz).normalize().multiplyScalar(st.radius+0.4-dist+0.01);
-      np.x+=push.x; np.z+=push.z; pVel.x*=0.2; pVel.z*=0.2;
+    if(dist<c.radius+0.4&&dist>0){
+      const push=(c.radius+0.4-dist+0.01);
+      np.x+=dx/dist*push; np.z+=dz/dist*push;
+      pVel.x*=0.2; pVel.z*=0.2;
     }
   }
   playerRig.position.copy(np);
@@ -1053,15 +949,13 @@ function updateDesktopPlayer(dt){
   desktopGunGroup.position.x=0.22+(mv?Math.sin(tt*4)*0.005:0);
 }
 
-// ══════════════════════════════════════════════════════════════
-// ENTER VR / DESKTOP
-// ══════════════════════════════════════════════════════════════
+// Enter modes
 window.chooseHand=function(hand){
   dominantHand=hand;
   gunHandIndex  = hand==='right'?1:0;
   freeHandIndex = hand==='right'?0:1;
   document.getElementById('handedness-display').innerHTML=
-    `🖐 <b>${hand.toUpperCase()} HANDED</b> — Gun: ${hand} hand, Free: ${hand==='right'?'left':'right'} hand`;
+    `🖐 <b>${hand.toUpperCase()} HANDED</b> — Gun: ${hand} hand | Free: ${hand==='right'?'left':'right'} hand`;
   document.getElementById('handedness-screen').style.display='none';
   document.getElementById('mode-screen').style.display='flex';
   checkVRStatus();
@@ -1069,39 +963,35 @@ window.chooseHand=function(hand){
 
 async function checkVRStatus(){
   const st=document.getElementById('vr-check-status');
-  if(!navigator.xr){st.textContent='❌ WebXR not available — use Desktop Mode';return;}
+  if(!navigator.xr){st.textContent='❌ WebXR not available';return;}
   try{
     const ok=await navigator.xr.isSessionSupported('immersive-vr');
-    st.textContent=ok?'✅ VR headset detected!':'⚠️ No VR headset — connect one or use Desktop Mode';
+    st.textContent=ok?'✅ VR headset detected!':'⚠️ No VR headset';
     if(!ok) document.getElementById('vr-mode-btn').style.opacity='0.5';
-  }catch(e){st.textContent='⚠️ VR check blocked — try Oculus/Firefox browser';}
+  }catch(e){st.textContent='⚠️ VR check blocked';}
 }
 
 window.enterVR=async function(){
   try{
     if(!navigator.xr) throw new Error('WebXR not available');
-    const ok=await navigator.xr.isSessionSupported('immersive-vr');
-    if(!ok) throw new Error('VR not supported on this device');
     const session=await navigator.xr.requestSession('immersive-vr',{
-      requiredFeatures:['local-floor'],
-      optionalFeatures:['bounded-floor','hand-tracking']
+      requiredFeatures:['local-floor'],optionalFeatures:['bounded-floor']
     });
     await renderer.xr.setSession(session);
     isVR=true;
     document.getElementById('mode-screen').style.display='none';
     document.getElementById('hud').style.display='block';
     document.getElementById('vr-hint').style.display='block';
-    setTimeout(()=>document.getElementById('vr-hint').style.display='none',8000);
+    setTimeout(()=>document.getElementById('vr-hint').style.display='none',10000);
     desktopGunGroup.visible=false;
     setupVRHands();
     cw={...WEAPONS[weaponIndex]};
     updateAmmoHUD();
     gameStarted=true;
   }catch(err){
-    alert('Could not enter VR:\n'+err.message+'\n\nUse Desktop Mode instead.');
+    alert('Could not enter VR:\n'+err.message);
   }
 };
-window.enterVR=window.enterVR; // expose
 
 window.enterDesktop=function(){
   document.getElementById('mode-screen').style.display='none';
@@ -1111,9 +1001,7 @@ window.enterDesktop=function(){
   gameStarted=true;
 };
 
-// ══════════════════════════════════════════════════════════════
-// MAIN LOOP
-// ══════════════════════════════════════════════════════════════
+// Main loop
 const clock=new THREE.Clock();
 let snapCooldown=0;
 
@@ -1123,17 +1011,14 @@ renderer.setAnimationLoop(()=>{
 
   if(!gameStarted) return;
 
-  // Desktop movement
   if(!isVR && document.getElementById('hud').style.display==='block') updateDesktopPlayer(dt);
 
-  // VR controller velocity tracking
   vrControllers.forEach((ctrl,i)=>{
     const cur=new THREE.Vector3().setFromMatrixPosition(ctrl.matrixWorld);
     if(dt>0) ctrlVel[i].subVectors(cur,ctrlPrevPos[i]).divideScalar(dt);
     ctrlPrevPos[i].copy(cur);
   });
 
-  // VR locomotion + weapon switch + snap turn
   if(isVR){
     const session=renderer.xr.getSession();
     if(session){
@@ -1142,37 +1027,29 @@ renderer.setAnimationLoop(()=>{
         const gp=src.gamepad; if(!gp) continue;
         const hi=src.handedness==='right'?1:0;
         const ax=gp.axes;
-
         handleThumbstick(src,hi);
-
-        if(src.handedness==='left'){
-          // Left stick = move
-          if(ax.length>=4){
-            const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion()));
-            fwd.y=0; fwd.normalize();
-            const rgt=new THREE.Vector3(1,0,0).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion()));
-            rgt.y=0; rgt.normalize();
-            playerRig.position.addScaledVector(fwd,-ax[3]*3*dt);
-            playerRig.position.addScaledVector(rgt, ax[2]*3*dt);
-          }
+        if(src.handedness==='left'&&ax.length>=4){
+          const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion()));
+          fwd.y=0; fwd.normalize();
+          const rgt=new THREE.Vector3(1,0,0).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion()));
+          rgt.y=0; rgt.normalize();
+          playerRig.position.addScaledVector(fwd,-ax[3]*3*dt);
+          playerRig.position.addScaledVector(rgt, ax[2]*3*dt);
         }
-        if(src.handedness==='right'){
-          // Right stick X = snap turn
-          if(ax.length>=4&&snapCooldown<=0&&Math.abs(ax[2])>0.7){
-            playerRig.rotation.y-=Math.sign(ax[2])*Math.PI/4;
-            snapCooldown=0.4;
-          }
+        if(src.handedness==='right'&&ax.length>=4&&snapCooldown<=0&&Math.abs(ax[2])>0.7){
+          playerRig.rotation.y-=Math.sign(ax[2])*Math.PI/4;
+          snapCooldown=0.4;
         }
 
-        // Stone collision in VR
-        for(const st of stoneObjects){
-          const dx=playerRig.position.x-st.mesh.position.x;
-          const dz=playerRig.position.z-st.mesh.position.z;
+        // Player collision
+        for(const c of collidables){
+          if(c.type==='phys') continue;
+          const dx=playerRig.position.x-c.mesh.position.x;
+          const dz=playerRig.position.z-c.mesh.position.z;
           const dist=Math.sqrt(dx*dx+dz*dz);
-          if(dist<st.radius+0.4&&dist>0){
-            const push=new THREE.Vector3(dx,0,dz).normalize();
-            playerRig.position.x+=push.x*(st.radius+0.4-dist+0.01);
-            playerRig.position.z+=push.z*(st.radius+0.4-dist+0.01);
+          if(dist<c.radius+0.4&&dist>0){
+            playerRig.position.x+=dx/dist*(c.radius+0.4-dist+0.01);
+            playerRig.position.z+=dz/dist*(c.radius+0.4-dist+0.01);
           }
         }
       }
@@ -1213,36 +1090,42 @@ renderer.setAnimationLoop(()=>{
       p.vel.x*=0.75; p.vel.z*=0.75; p.avel.multiplyScalar(0.75);
       if(Math.abs(p.vel.y)<0.05) p.grounded=true;
     }
-    // Stone collision for objects
-    for(const st of stoneObjects){
-      const dx=p.mesh.position.x-st.mesh.position.x, dz=p.mesh.position.z-st.mesh.position.z;
+    
+    // Collision with everything
+    for(const c of collidables){
+      if(c.physRef===p||c.type==='phys') continue;
+      const dx=p.mesh.position.x-c.mesh.position.x, dz=p.mesh.position.z-c.mesh.position.z;
       const dist=Math.sqrt(dx*dx+dz*dz);
-      if(dist<st.radius+0.3&&dist>0){
-        const n2=new THREE.Vector3(dx,0,dz).normalize();
-        p.mesh.position.x+=n2.x*(st.radius+0.3-dist);
-        p.mesh.position.z+=n2.z*(st.radius+0.3-dist);
-        p.vel.reflect(n2); p.vel.multiplyScalar(0.4);
+      if(dist<c.radius+p.radius&&dist>0){
+        const n2=new THREE.Vector3(dx/dist,0,dz/dist);
+        p.mesh.position.x+=n2.x*(c.radius+p.radius-dist+0.01);
+        p.mesh.position.z+=n2.z*(c.radius+p.radius-dist+0.01);
+        p.vel.reflect(n2).multiplyScalar(0.5);
+        
+        // Knock down NPCs
+        if(c.type==='npc'&&c.npcRef&&p.vel.length()>3){
+          const impulse=p.vel.clone().multiplyScalar(0.3/c.npcRef.mass);
+          c.npcRef.knockDown(impulse);
+          p.vel.multiplyScalar(0.3);
+        }
       }
     }
   }
 
-  // Destructible bricks
   destructibles.forEach(({mesh:m})=>{
     if(!m.userData.falling) return;
     m.userData.vel.y-=16*dt; m.position.addScaledVector(m.userData.vel,dt);
-    m.rotation.x+=m.userData.avel.x*dt; m.rotation.y+=m.userData.avel.y*dt; m.rotation.z+=m.userData.avel.z*dt;
+    m.rotation.x+=m.userData.avel.x*dt; m.rotation.y+=m.userData.avel.y*dt;
     m.userData.vel.multiplyScalar(0.98); m.userData.avel.multiplyScalar(0.96);
-    if(m.position.y<0.28){m.position.y=0.28;m.userData.vel.y=Math.abs(m.userData.vel.y)*0.28;m.userData.vel.x*=0.7;m.userData.vel.z*=0.7;m.userData.avel.multiplyScalar(0.75);}
+    if(m.position.y<0.28){m.position.y=0.28;m.userData.vel.y=Math.abs(m.userData.vel.y)*0.28;
+      m.userData.vel.x*=0.7;m.userData.vel.z*=0.7;}
   });
 
-  // NPCs
   npcs.forEach(n=>n.update(dt));
   checkSwordHits();
 
-  // Targets
   targets.forEach(tg=>{
     if(!tg.userData.alive) return;
-    if(tg.userData.spin) tg.rotation.y+=tg.userData.spinSpeed*dt;
     if(tg.userData.moving) tg.position.x=tg.userData.baseX+Math.sin(t*tg.userData.speed+tg.userData.phase)*tg.userData.range;
   });
 
