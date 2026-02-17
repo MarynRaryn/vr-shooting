@@ -2,26 +2,28 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>VR Mega Sandbox - Absolute Edition</title>
+    <title>VR ULTRA SANDBOX: THE 400-LINE MASTERPIECE</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; }
-        #info { 
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Courier New', monospace; }
+        #vr-hud {
             position: absolute; top: 20px; left: 20px; color: #00ffff; 
-            background: rgba(0,0,0,0.85); padding: 20px; border: 2px solid #00ffff;
-            border-radius: 10px; font-family: 'Courier New', monospace; font-size: 14px;
-            pointer-events: none; text-shadow: 0 0 5px #00ffff;
+            background: rgba(0, 0, 0, 0.9); padding: 20px; border: 3px solid #00ffff;
+            border-radius: 10px; pointer-events: none; z-index: 100;
         }
+        .stat { font-size: 14px; margin-bottom: 5px; text-transform: uppercase; }
+        .blink { animation: blinker 1.5s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0; } }
     </style>
 </head>
 <body>
-    <div id="info">
-        <b>SYSTEM STATUS: ULTIMATE SANDBOX</b><br><br>
-        [L-STICK] : MOVE AVATAR<br>
-        [R-STICK] : SNAP TURN<br>
-        [GRIP]    : PICK UP / ZIPLINE / THROW<br>
-        [TRIGGER] : FIRE GUN / WELD BLOCKS<br>
-        [WAIST]   : GRAB AMMO (CYAN BOX)<br><br>
-        BUILD MODE: USE WELDER TO JOIN BLOCKS
+    <div id="vr-hud">
+        <div class="stat blink">● ENGINE: HYPER-DENSITY MODE</div>
+        <div class="stat">WELDING: ENABLED | DESTRUCTION: MAX</div>
+        <div class="stat">TOOLS: GUN, HAMMER, WELDER</div>
+        <hr style="border:1px solid #00ffff">
+        <div class="stat">L-THUMB: WALK | R-THUMB: TURN</div>
+        <div class="stat">GRIP: GRAB / ZIPLINE / CLIMB</div>
+        <div class="stat">TRIGGER: USE TOOL / FIRE</div>
     </div>
 
     <script type="importmap">
@@ -39,392 +41,369 @@
         import { VRButton } from 'three/addons/webxr/VRButton.js';
 
         // ==========================================
-        // 1. ENGINE CORE
+        // 1. CORE SCENE & RENDERING
         // ==========================================
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87ceeb);
-        scene.fog = new THREE.Fog(0x87ceeb, 20, 150);
+        scene.fog = new THREE.Fog(0x87ceeb, 20, 500);
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
         renderer.xr.enabled = true;
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.body.appendChild(renderer.domElement);
         document.body.appendChild(VRButton.createButton(renderer));
 
-        const cameraGroup = new THREE.Group();
-        cameraGroup.add(camera);
-        scene.add(cameraGroup);
-
-        // ==========================================
-        // 2. LIGHTING & ENVIRONMENT
-        // ==========================================
-        const ambient = new THREE.AmbientLight(0xffffff, 0.5);
-        scene.add(ambient);
+        const playerRig = new THREE.Group();
+        playerRig.add(camera);
+        scene.add(playerRig);
 
         const sun = new THREE.DirectionalLight(0xffffff, 1.2);
-        sun.position.set(50, 100, 50);
+        sun.position.set(100, 150, 100);
         sun.castShadow = true;
-        sun.shadow.mapSize.set(2048, 2048);
+        sun.shadow.mapSize.set(4096, 4096);
+        sun.shadow.camera.left = -100;
+        sun.shadow.camera.right = 100;
+        sun.shadow.camera.top = 100;
+        sun.shadow.camera.bottom = -100;
         scene.add(sun);
-
-        const groundGeo = new THREE.PlaneGeometry(500, 500);
-        const groundMat = new THREE.MeshStandardMaterial({ color: 0x448844, roughness: 0.8 });
-        const ground = new THREE.Mesh(groundGeo, groundMat);
-        ground.rotation.x = -Math.PI / 2;
-        ground.receiveShadow = true;
-        scene.add(ground);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.4));
 
         // ==========================================
-        // 3. ENHANCED PHYSICS & WELDING SYSTEM
+        // 2. GLOBAL PHYSICS SYSTEM
         // ==========================================
         const physicsObjects = [];
-        class PhysicsObject {
+        class PhysicsBody {
             constructor(mesh, type = 'prop') {
                 this.mesh = mesh;
                 this.type = type;
                 this.velocity = new THREE.Vector3();
                 this.isGrabbed = false;
-                this.isWeldedTo = null; // Parent object if welded
-                this.lastPos = new THREE.Vector3();
+                this.weldedTo = null; // Reference to parent mesh
+                this.lastFramePos = new THREE.Vector3();
                 this.ammoCount = 0;
-                this.isDead = false;
+                this.health = 100;
+                this.active = true;
                 physicsObjects.push(this);
             }
 
             update(dt) {
-                if (this.isGrabbed || this.isWeldedTo || this.isDead) {
-                    if (this.isGrabbed) {
-                        const cur = new THREE.Vector3().setFromMatrixPosition(this.mesh.matrixWorld);
-                        this.velocity.subVectors(cur, this.lastPos).divideScalar(dt);
-                        this.lastPos.copy(cur);
-                    }
+                if (!this.active || this.weldedTo) return;
+
+                if (this.isGrabbed) {
+                    const currentPos = new THREE.Vector3().setFromMatrixPosition(this.mesh.matrixWorld);
+                    this.velocity.subVectors(currentPos, this.lastFramePos).divideScalar(dt);
+                    this.lastFramePos.copy(currentPos);
                     return;
                 }
 
-                // Gravity logic
-                this.velocity.y -= 9.8 * dt;
+                // Gravity
+                this.velocity.y -= 9.81 * dt;
                 this.mesh.position.addScaledVector(this.velocity, dt);
 
                 // Ground Collision
                 if (this.mesh.position.y < 0.1) {
                     this.mesh.position.y = 0.1;
-                    this.velocity.set(0, 0, 0);
+                    this.velocity.y = 0;
+                    this.velocity.multiplyScalar(0.8); // Friction
                 }
-
-                // Air Drag
-                this.velocity.multiplyScalar(0.985);
+                this.velocity.multiplyScalar(0.99); // Air Drag
             }
         }
 
         // ==========================================
-        // 4. THE PLAYGROUND (GEOMETRY HEAVY)
+        // 3. WORLD GEOMETRY: PLAYGROUND
         // ==========================================
-        
+        const ground = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000), new THREE.MeshStandardMaterial({ color: 0x3d5a3d }));
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // --- MONKEY BARS ---
+        const mbGroup = new THREE.Group();
+        const metalMat = new THREE.MeshStandardMaterial({ color: 0x777777, metalness: 0.8, roughness: 0.2 });
+        const barLegs = [ [2,2], [-2,2], [2,-2], [-2,-2] ];
+        barLegs.forEach(pos => {
+            const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 5), metalMat);
+            leg.position.set(pos[0], 2.5, pos[1]);
+            mbGroup.add(leg);
+        });
+        const rail1 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 10), metalMat);
+        rail1.position.set(2, 5, 0);
+        const rail2 = rail1.clone();
+        rail2.position.set(-2, 5, 0);
+        mbGroup.add(rail1, rail2);
+        for(let i=0; i<12; i++) {
+            const rung = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 4), metalMat);
+            rung.rotation.z = Math.PI/2;
+            rung.position.set(0, 5, -4.5 + i*0.8);
+            mbGroup.add(rung);
+        }
+        mbGroup.position.set(15, 0, 15);
+        scene.add(mbGroup);
+
+        // --- SWING SET ---
+        const swingGroup = new THREE.Group();
+        const sFrame1 = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 7), metalMat);
+        sFrame1.position.set(4, 3, 0); sFrame1.rotation.z = 0.3;
+        const sFrame2 = sFrame1.clone(); sFrame2.position.set(-4, 3, 0); sFrame2.rotation.z = -0.3;
+        const sTop = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 10), metalMat);
+        sTop.rotation.z = Math.PI/2; sTop.position.set(0, 6, 0);
+        swingGroup.add(sFrame1, sFrame2, sTop);
+        const seat = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, 0.6), new THREE.MeshStandardMaterial({color: 0xaa0000}));
+        seat.position.set(0, 1.5, 0);
+        swingGroup.add(seat);
+        swingGroup.position.set(-15, 0, 15);
+        scene.add(swingGroup);
+
         // --- THE SLIDE ---
-        const slideArea = new THREE.Group();
-        const s_Platform = new THREE.Mesh(new THREE.BoxGeometry(4, 0.4, 4), new THREE.MeshStandardMaterial({color: 0xcc4400}));
-        s_Platform.position.y = 4;
-        const s_Ramp = new THREE.Mesh(new THREE.BoxGeometry(4, 0.4, 8), new THREE.MeshStandardMaterial({color: 0xffaa00}));
-        s_Ramp.position.set(0, 2, 4.5); s_Ramp.rotation.x = -0.45;
-        const s_Leg1 = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 4), new THREE.MeshStandardMaterial({color: 0x555555}));
-        s_Leg1.position.set(1.5, 2, 1.5);
-        const s_Leg2 = s_Leg1.clone(); s_Leg2.position.set(-1.5, 2, 1.5);
-        const s_Leg3 = s_Leg1.clone(); s_Leg3.position.set(1.5, 2, -1.5);
-        const s_Leg4 = s_Leg1.clone(); s_Leg4.position.set(-1.5, 2, -1.5);
-        slideArea.add(s_Platform, s_Ramp, s_Leg1, s_Leg2, s_Leg3, s_Leg4);
-        slideArea.position.set(-20, 0, -20);
-        scene.add(slideArea);
+        const slideGroup = new THREE.Group();
+        const slidePlat = new THREE.Mesh(new THREE.BoxGeometry(4, 0.4, 4), new THREE.MeshStandardMaterial({color: 0xff4400}));
+        slidePlat.position.y = 4;
+        const slideRamp = new THREE.Mesh(new THREE.BoxGeometry(4, 0.5, 12), new THREE.MeshStandardMaterial({color: 0xffaa00}));
+        slideRamp.position.set(0, 1.8, 5.5); slideRamp.rotation.x = -0.4;
+        slideGroup.add(slidePlat, slideRamp);
+        slideGroup.position.set(0, 0, 30);
+        scene.add(slideGroup);
 
         // --- MERRY-GO-ROUND ---
         const mgr = new THREE.Group();
-        const mg_Base = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 0.25, 32), new THREE.MeshStandardMaterial({ color: 0xaa00aa }));
-        mgr.add(mg_Base);
-        const mg_Handles = [];
-        for (let i = 0; i < 6; i++) {
-            const h_Group = new THREE.Group();
-            const h_Pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.5), new THREE.MeshStandardMaterial({color: 0xeeeeee}));
-            const h_Top = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.08, 0.08), new THREE.MeshStandardMaterial({color: 0xeeeeee}));
-            h_Top.position.y = 0.75;
-            h_Group.add(h_Pole, h_Top);
-            const ang = (i / 6) * Math.PI * 2;
-            h_Group.position.set(Math.cos(ang)*3.2, 0.75, Math.sin(ang)*3.2);
-            mgr.add(h_Group); mg_Handles.push(h_Group);
+        mgr.add(new THREE.Mesh(new THREE.CylinderGeometry(5, 5, 0.3, 32), new THREE.MeshStandardMaterial({color: 0xcc00cc})));
+        const mgrHandles = [];
+        for(let i=0; i<8; i++) {
+            const h = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.5), new THREE.MeshStandardMaterial({color: 0xdddddd}));
+            const a = (i/8) * Math.PI * 2;
+            h.position.set(Math.cos(a)*4.5, 0.75, Math.sin(a)*4.5);
+            mgr.add(h); mgrHandles.push(h);
         }
-        mgr.position.set(0, 0.1, -25);
+        mgr.position.set(0, 0.2, -30);
         scene.add(mgr);
 
-        // --- SWING SET ---
-        const swings = new THREE.Group();
-        const sw_Frame = new THREE.Mesh(new THREE.BoxGeometry(10, 0.3, 0.3), new THREE.MeshStandardMaterial({color: 0x442200}));
-        sw_Frame.position.y = 5;
-        const sw_P1 = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 6), new THREE.MeshStandardMaterial({color: 0x442200}));
-        sw_P1.position.set(4.5, 2.5, 0); sw_P1.rotation.z = 0.2;
-        const sw_P2 = sw_P1.clone(); sw_P2.position.set(-4.5, 2.5, 0); sw_P2.rotation.z = -0.2;
-        swings.add(sw_Frame, sw_P1, sw_P2);
-        swings.position.set(20, 0, -20);
-        scene.add(swings);
-
         // ==========================================
-        // 5. THE NEIGHBORHOOD (HOUSES)
+        // 4. DESTRUCTIBLE NEIGHBORHOOD
         // ==========================================
-        function createHouse(x, z, hColor) {
-            const h = new THREE.Group();
-            const body = new THREE.Mesh(new THREE.BoxGeometry(8, 6, 8), new THREE.MeshStandardMaterial({color: 0xdddddd}));
-            body.position.y = 3;
-            const roof = new THREE.Mesh(new THREE.ConeGeometry(7, 4, 4), new THREE.MeshStandardMaterial({color: hColor}));
-            roof.position.y = 8; roof.rotation.y = Math.PI/4;
-            const door = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.5, 0.2), new THREE.MeshStandardMaterial({color: 0x442200}));
-            door.position.set(0, 1.25, 4);
-            h.add(body, roof, door);
-            h.position.set(x, 0, z);
-            scene.add(h);
+        function createDestructibleHouse(x, z, color) {
+            const hGroup = new THREE.Group();
+            for(let y=0; y<12; y++) {
+                for(let i=0; i<8; i++) {
+                    const makeBrick = (px, py, pz, ry) => {
+                        const m = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.4, 0.4), new THREE.MeshStandardMaterial({color: color}));
+                        m.position.set(px, py, pz); m.rotation.y = ry; m.castShadow = true;
+                        scene.add(m); new PhysicsBody(m, 'brick');
+                    };
+                    makeBrick(x-2.8 + i*0.8, y*0.4+0.2, z+2.8, 0);
+                    makeBrick(x-2.8 + i*0.8, y*0.4+0.2, z-2.8, 0);
+                    makeBrick(x+2.8, y*0.4+0.2, z-2.8 + i*0.8, Math.PI/2);
+                    makeBrick(x-2.8, y*0.4+0.2, z-2.8 + i*0.8, Math.PI/2);
+                }
+            }
+            const roof = new THREE.Mesh(new THREE.ConeGeometry(6, 4, 4), new THREE.MeshStandardMaterial({color: 0x222222}));
+            roof.position.set(x, 7, z); roof.rotation.y = Math.PI/4;
+            scene.add(roof);
         }
-        createHouse(-50, 0, 0x880000);
-        createHouse(-50, 20, 0x000088);
-        createHouse(-50, -20, 0x006600);
+        createDestructibleHouse(-50, 0, 0x993333);
+        createDestructibleHouse(-50, 30, 0x333399);
+        createDestructibleHouse(-50, -30, 0x339933);
 
         // ==========================================
-        // 6. ZIPLINE SYSTEM
+        // 5. ZIPLINES & CONSTRUCTION YARD
         // ==========================================
-        const ziplines = [];
-        function createZipline(startX, startZ, endX, endZ) {
-            const pole_geo = new THREE.CylinderGeometry(0.3, 0.3, 12);
-            const pole_mat = new THREE.MeshStandardMaterial({color: 0x333333});
-            const p1 = new THREE.Mesh(pole_geo, pole_mat); p1.position.set(startX, 6, startZ);
-            const p2 = new THREE.Mesh(pole_geo, pole_mat); p2.position.set(endX, 6, endZ);
-            scene.add(p1, p2);
+        const zPost1 = new THREE.Mesh(new THREE.BoxGeometry(0.8, 20, 0.8), new THREE.MeshStandardMaterial({color: 0x111}));
+        zPost1.position.set(50, 10, -50); scene.add(zPost1);
+        const zPost2 = zPost1.clone();
+        zPost2.position.set(50, 10, 50); scene.add(zPost2);
+        const zHandle = new THREE.Mesh(new THREE.SphereGeometry(0.6), new THREE.MeshStandardMaterial({color: 0xffff00}));
+        zHandle.position.set(50, 18, -50); scene.add(zHandle);
+        const zPhy = new PhysicsBody(zHandle, 'zipline');
+        zPhy.start = new THREE.Vector3(50, 18, -50); zPhy.end = new THREE.Vector3(50, 18, 50);
 
-            const handle = new THREE.Mesh(new THREE.SphereGeometry(0.4), new THREE.MeshStandardMaterial({color: 0xffff00, emissive: 0x444400}));
-            handle.position.set(startX, 11, startZ);
-            scene.add(handle);
-            const po = new PhysicsObject(handle, 'zip');
-            po.start = new THREE.Vector3(startX, 11, startZ);
-            po.end = new THREE.Vector3(endX, 11, endZ);
-            ziplines.push(po);
+        // Construction Yard Beams
+        for(let i=0; i<10; i++) {
+            const beam = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 4), new THREE.MeshStandardMaterial({color: 0xffaa00, metalness: 0.5}));
+            beam.position.set(20 + i, 1, -20);
+            scene.add(beam); new PhysicsBody(beam, 'beam');
         }
-        createZipline(30, -30, 30, 60);
 
         // ==========================================
-        // 7. ARSENAL & TOOLS
+        // 6. WEAPONS, AMMO & EXPLOSIVES
         // ==========================================
-        
-        function spawnGun(x, z) {
+        const ammoBelt = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.1, 0.2), new THREE.MeshStandardMaterial({color: 0x00ffff, wireframe: true}));
+        scene.add(ammoBelt);
+
+        function spawnTool(type, x, z, col) {
             const g = new THREE.Group();
-            const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, 0.3), new THREE.MeshStandardMaterial({color: 0x222222}));
-            const grip = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.15, 0.07), new THREE.MeshStandardMaterial({color: 0x222222}));
-            grip.position.set(0, -0.1, 0.1);
-            g.add(barrel, grip); g.position.set(x, 1, z);
-            scene.add(g);
-            const po = new PhysicsObject(g, 'gun'); po.ammoCount = 0;
+            const body = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.45), new THREE.MeshStandardMaterial({color: col}));
+            g.add(body);
+            if(type === 'gun') {
+                const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.4), new THREE.MeshStandardMaterial({color: 0x111}));
+                barrel.rotation.x = Math.PI/2; barrel.position.z = -0.3; g.add(barrel);
+            }
+            g.position.set(x, 1, z); scene.add(g);
+            return new PhysicsBody(g, type);
+        }
+        spawnTool('gun', 2, 5, 0x222222);
+        spawnTool('welder', -2, 5, 0x00ffff);
+        spawnTool('hammer', 0, 5, 0x555555);
+
+        // Explosive Barrels
+        const barrels = [];
+        for(let i=0; i<6; i++) {
+            const b = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.2), new THREE.MeshStandardMaterial({color: 0xff0000}));
+            b.position.set(10 + i*2, 0.6, -40);
+            scene.add(b); const bp = new PhysicsBody(b, 'barrel');
+            barrels.push(bp);
         }
 
-        function spawnSword(x, z) {
-            const g = new THREE.Group();
-            const blade = new THREE.Mesh(new THREE.BoxGeometry(0.02, 1.0, 0.08), new THREE.MeshStandardMaterial({color: 0xdddddd, metalness: 0.9, roughness: 0.1}));
-            blade.position.y = 0.55;
-            const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.25), new THREE.MeshStandardMaterial({color: 0x331100}));
-            const cross = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.03, 0.05), new THREE.MeshStandardMaterial({color: 0xaa8800}));
-            cross.position.y = 0.1;
-            g.add(blade, hilt, cross); g.position.set(x, 1, z);
-            scene.add(g);
-            new PhysicsObject(g, 'sword');
-        }
-
-        function spawnWelder(x, z) {
-            const g = new THREE.Group();
-            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.35), new THREE.MeshStandardMaterial({color: 0x0088ff}));
-            const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.1), new THREE.MeshStandardMaterial({color: 0xffffff, emissive: 0x00ffff}));
-            tip.position.y = 0.2; body.rotation.x = Math.PI/2;
-            g.add(body, tip); g.position.set(x, 1, z);
-            scene.add(g);
-            new PhysicsObject(g, 'welder');
-        }
-
-        spawnGun(2, 2); spawnSword(-2, 2); spawnWelder(0, 3);
-
-        // Car Building Blocks
-        for(let i=0; i<8; i++) {
-            const b = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), new THREE.MeshStandardMaterial({color: Math.random()*0xffffff}));
-            b.position.set(5 + Math.random()*5, 0.5, 5 + Math.random()*5);
-            scene.add(b); new PhysicsObject(b, 'block');
-        }
-
-        // ==========================================
-        // 8. NPCs & HEALTH
-        // ==========================================
+        // NPCs
         const npcs = [];
-        function createNPC(x, z) {
-            const group = new THREE.Group();
-            const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.4, 1.2), new THREE.MeshStandardMaterial({color: 0xff3333}));
-            body.position.y = 1;
-            const hb_bg = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.08), new THREE.MeshBasicMaterial({color: 0x330000}));
-            hb_bg.position.y = 2.4;
-            const hb_fg = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.08), new THREE.MeshBasicMaterial({color: 0x00ff00}));
-            hb_fg.position.y = 2.41; hb_fg.position.z = 0.01;
-            group.add(body, hb_bg, hb_fg);
-            group.position.set(x, 0, z);
-            group.userData = { health: 100, bar: hb_fg, dir: Math.random()*Math.PI*2 };
-            scene.add(group); npcs.push(group);
+        for(let i=0; i<5; i++) {
+            const n = new THREE.Group();
+            const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.5, 1.4), new THREE.MeshStandardMaterial({color: 0xff0000}));
+            body.position.y = 1.2; n.add(body);
+            const hp = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.1), new THREE.MeshBasicMaterial({color: 0x00ff00}));
+            hp.position.y = 2.8; n.add(hp);
+            n.position.set(Math.random()*40-20, 0, -60);
+            n.userData = {hp: 100, bar: hp, dir: Math.random()*Math.PI*2};
+            scene.add(n); npcs.push(n);
         }
-        for(let i=0; i<5; i++) createNPC(Math.random()*40-20, -40 - Math.random()*10);
 
         // ==========================================
-        // 9. VR INPUT & LOGIC
+        // 7. VR CONTROLLERS & INTERACTION
         // ==========================================
-        const modelFactory = new XRControllerModelFactory();
-        const ammoSpawner = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.12, 0.12), new THREE.MeshStandardMaterial({color: 0x00ffff, wireframe: true}));
-        scene.add(ammoSpawner);
-
-        let activeMGHand = null, lastMGAngle = 0, mgVel = 0;
+        const controllerFactory = new XRControllerModelFactory();
+        let activeMGRCon = null, lastMGRTheta = 0, mgrVel = 0;
 
         function onSqueezeStart(e) {
-            const c = e.target;
-            const hPos = new THREE.Vector3().setFromMatrixPosition(c.matrixWorld);
-
-            // Ammo Pick
-            if(hPos.distanceTo(ammoSpawner.position) < 0.22) {
-                const m = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.12, 0.05), new THREE.MeshStandardMaterial({color: 0xffaa00}));
-                scene.add(m); const po = new PhysicsObject(m, 'ammo');
-                c.attach(m); c.userData.selected = po; po.isGrabbed = true;
-                return;
+            const controller = e.target;
+            const pos = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld);
+            
+            if(pos.distanceTo(ammoBelt.position) < 0.3) {
+                const mag = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.15, 0.06), new THREE.MeshStandardMaterial({color: 0xffaa00}));
+                scene.add(mag); const po = new PhysicsBody(mag, 'ammo');
+                controller.attach(mag); controller.userData.held = po; po.isGrabbed = true; return;
             }
-
-            // Object Pick
-            physicsObjects.forEach(obj => {
-                const oPos = new THREE.Vector3().setFromMatrixPosition(obj.mesh.matrixWorld);
-                if(hPos.distanceTo(oPos) < 0.45) {
-                    obj.isGrabbed = true; c.attach(obj.mesh); c.userData.selected = obj;
+            
+            physicsObjects.forEach(o => {
+                if(pos.distanceTo(o.mesh.getWorldPosition(new THREE.Vector3())) < 0.5) {
+                    o.isGrabbed = true; controller.attach(o.mesh); controller.userData.held = o;
                 }
             });
 
-            // Merry-Go-Round Grab
-            mg_Handles.forEach(h => {
-                if(hPos.distanceTo(h.getWorldPosition(new THREE.Vector3())) < 0.4) {
-                    activeMGHand = c;
-                    const loc = mgr.worldToLocal(hPos.clone());
-                    lastMGAngle = Math.atan2(loc.z, loc.x);
+            mgrHandles.forEach(h => {
+                if(pos.distanceTo(h.getWorldPosition(new THREE.Vector3())) < 0.4) {
+                    activeMGRCon = controller; lastMGRTheta = Math.atan2(mgr.worldToLocal(pos.clone()).z, mgr.worldToLocal(pos.clone()).x);
                 }
             });
         }
 
         function onSqueezeEnd(e) {
-            const c = e.target;
-            if(activeMGHand === c) activeMGHand = null;
-            if(c.userData.selected) {
-                const obj = c.userData.selected;
-                scene.attach(obj.mesh); obj.isGrabbed = false;
-                c.userData.selected = null;
+            const controller = e.target;
+            if(activeMGRCon === controller) activeMGRCon = null;
+            if(controller.userData.held) {
+                const held = controller.userData.held;
+                scene.attach(held.mesh); held.isGrabbed = false; controller.userData.held = null;
             }
         }
 
         function onSelectStart(e) {
-            const c = e.target;
-            const held = c.userData.selected;
+            const controller = e.target;
+            const held = controller.userData.held;
             if(held && held.type === 'gun' && held.ammoCount > 0) {
-                const b = new THREE.Mesh(new THREE.SphereGeometry(0.04), new THREE.MeshBasicMaterial({color: 0xffff00}));
-                b.position.setFromMatrixPosition(c.matrixWorld); scene.add(b);
-                const pb = new PhysicsObject(b, 'bullet');
-                const dir = new THREE.Vector3(0,0,-1).applyQuaternion(c.quaternion).normalize();
-                pb.velocity.copy(dir.multiplyScalar(60)); held.ammoCount--;
+                const bullet = new THREE.Mesh(new THREE.SphereGeometry(0.06), new THREE.MeshBasicMaterial({color: 0xffff00}));
+                bullet.position.setFromMatrixPosition(controller.matrixWorld);
+                scene.add(bullet); const bp = new PhysicsBody(bullet, 'bullet');
+                bp.velocity.copy(new THREE.Vector3(0,0,-1).applyQuaternion(controller.quaternion).multiplyScalar(120));
+                held.ammoCount--;
             }
             if(held && held.type === 'welder') {
-                let nearby = physicsObjects.filter(o => o.type === 'block' && o.mesh.position.distanceTo(held.mesh.position) < 0.6);
-                if(nearby.length >= 2) {
-                    nearby[0].mesh.attach(nearby[1].mesh); nearby[1].isWeldedTo = nearby[0];
-                }
+                let hits = physicsObjects.filter(o => (o.type === 'brick' || o.type === 'beam' || o.type === 'prop') && o.mesh.position.distanceTo(held.mesh.position) < 0.8);
+                if(hits.length >= 2) { hits[0].mesh.attach(hits[1].mesh); hits[1].weldedTo = hits[0].mesh; }
             }
         }
 
-        for (let i = 0; i < 2; i++) {
+        for(let i=0; i<2; i++) {
             const c = renderer.xr.getController(i);
             c.addEventListener('squeezestart', onSqueezeStart);
             c.addEventListener('squeezeend', onSqueezeEnd);
             c.addEventListener('selectstart', onSelectStart);
-            cameraGroup.add(c);
-            const g = renderer.xr.getControllerGrip(i);
-            g.add(modelFactory.createControllerModel(g));
-            cameraGroup.add(g);
+            playerRig.add(c);
+            const grip = renderer.xr.getControllerGrip(i);
+            grip.add(controllerFactory.createControllerModel(grip));
+            playerRig.add(grip);
         }
 
         // ==========================================
-        // 10. MAIN ANIMATION & LOGIC LOOP
+        // 8. ANIMATION & PHYSICS LOOP
         // ==========================================
         const clock = new THREE.Clock();
         renderer.setAnimationLoop(() => {
             const dt = Math.min(clock.getDelta(), 0.1);
-            const session = renderer.xr.getSession();
-
-            // --- THUMBSTICK LOCOMOTION ---
-            if (session) {
-                for (const source of session.inputSources) {
-                    if (source.gamepad) {
+            
+            // Movement
+            const xrSession = renderer.xr.getSession();
+            if(xrSession) {
+                xrSession.inputSources.forEach(source => {
+                    if(source.gamepad && source.handedness === 'left') {
                         const axes = source.gamepad.axes;
-                        if (source.handedness === 'left') {
-                            const headYaw = camera.rotation.y;
-                            cameraGroup.position.x += (axes[2] * Math.cos(headYaw) + axes[3] * Math.sin(headYaw)) * 4 * dt;
-                            cameraGroup.position.z += (axes[3] * Math.cos(headYaw) - axes[2] * Math.sin(headYaw)) * 4 * dt;
-                        } else if (source.handedness === 'right') {
-                            if (Math.abs(axes[2]) > 0.5) cameraGroup.rotation.y -= Math.sign(axes[2]) * 0.05;
-                        }
+                        const rot = camera.rotation.y;
+                        playerRig.position.x += (axes[2]*Math.cos(rot) + axes[3]*Math.sin(rot))*6*dt;
+                        playerRig.position.z += (axes[3]*Math.cos(rot) - axes[2]*Math.sin(rot))*6*dt;
+                    } else if(source.gamepad && source.handedness === 'right' && Math.abs(source.gamepad.axes[2]) > 0.5) {
+                        playerRig.rotation.y -= Math.sign(source.gamepad.axes[2]) * 0.05;
                     }
-                }
+                });
             }
 
-            // --- AMMO SPAWNER SYNC ---
-            const hWorld = new THREE.Vector3(); camera.getWorldPosition(hWorld);
-            ammoSpawner.position.set(hWorld.x, hWorld.y - 0.75, hWorld.z);
-            ammoSpawner.rotation.y = camera.rotation.y;
+            // Sync Belt
+            const headPos = new THREE.Vector3(); camera.getWorldPosition(headPos);
+            ammoBelt.position.set(headPos.x, headPos.y - 0.85, headPos.z);
+            ammoBelt.rotation.y = camera.rotation.y;
 
-            // --- MERRY-GO-ROUND SPIN ---
-            if(activeMGHand) {
-                const loc = mgr.worldToLocal(new THREE.Vector3().setFromMatrixPosition(activeMGHand.matrixWorld));
-                const cur = Math.atan2(loc.z, loc.x);
-                mgVel = (cur - lastMGAngle) / dt; lastMGAngle = cur;
+            // MGR Physics
+            if(activeMGRCon) {
+                const curTheta = Math.atan2(mgr.worldToLocal(new THREE.Vector3().setFromMatrixPosition(activeMGRCon.matrixWorld)).z, mgr.worldToLocal(new THREE.Vector3().setFromMatrixPosition(activeMGRCon.matrixWorld)).x);
+                mgrVel = (curTheta - lastMGRTheta) / dt; lastMGRTheta = curTheta;
             }
-            mgr.rotation.y += mgVel * dt; mgVel *= 0.985;
+            mgr.rotation.y += mgrVel * dt; mgrVel *= 0.98;
 
-            // --- PHYSICS & INTERACTION LOGIC ---
-            physicsObjects.forEach(o => {
-                if(o.isDead) return;
-                o.update(dt);
-
-                // Reload Gun
-                if(o.type === 'ammo' && o.isGrabbed) {
-                    physicsObjects.forEach(g => { 
-                        if(g.type === 'gun' && o.mesh.position.distanceTo(g.mesh.position) < 0.25) { 
-                            g.ammoCount = 15; scene.remove(o.mesh); o.isDead = true; 
+            // Global Physics
+            physicsObjects.forEach(obj => {
+                if(!obj.active) return;
+                obj.update(dt);
+                
+                if(obj.type === 'bullet' || obj.type === 'hammer') {
+                    physicsObjects.forEach(target => {
+                        if(target.type === 'brick' && obj.mesh.position.distanceTo(target.mesh.position) < 0.8) {
+                            target.velocity.add(new THREE.Vector3().subVectors(target.mesh.position, obj.mesh.position).normalize().multiplyScalar(15));
+                            if(obj.type === 'bullet') { scene.remove(obj.mesh); obj.active = false; }
+                        }
+                        if(target.type === 'barrel' && obj.mesh.position.distanceTo(target.mesh.position) < 0.8) {
+                            physicsObjects.forEach(n => { if(n.mesh.position.distanceTo(target.mesh.position) < 6) n.velocity.add(new THREE.Vector3().subVectors(n.mesh.position, target.mesh.position).normalize().multiplyScalar(30)); });
+                            scene.remove(target.mesh); target.active = false;
                         }
                     });
                 }
-
-                // Bullet Impacts
-                if(o.type === 'bullet') {
-                    npcs.forEach(n => { 
-                        if(o.mesh.position.distanceTo(n.position.clone().add(new THREE.Vector3(0,1,0))) < 0.7) { 
-                            n.userData.health -= 25; 
-                            n.userData.bar.scale.x = Math.max(0, n.userData.health/100); 
-                            scene.remove(o.mesh); o.isDead = true; 
-                        }
-                    });
+                
+                if(obj.type === 'ammo' && obj.isGrabbed) {
+                    physicsObjects.forEach(gun => { if(gun.type === 'gun' && obj.mesh.position.distanceTo(gun.mesh.position) < 0.4) { gun.ammoCount = 40; scene.remove(obj.mesh); obj.active = false; }});
                 }
-
-                // Zipline Movement
-                if(o.type === 'zip' && o.isGrabbed) {
-                    const travel = new THREE.Vector3().subVectors(o.end, o.start).normalize();
-                    o.mesh.position.addScaledVector(travel, 12 * dt);
-                    cameraGroup.position.copy(o.mesh.position.clone().sub(new THREE.Vector3(0, 2.5, 0)));
-                    if(o.mesh.position.distanceTo(o.end) < 0.5) { /* Optional: auto-drop */ }
+                
+                if(obj.type === 'zipline' && obj.isGrabbed) {
+                    obj.mesh.position.addScaledVector(new THREE.Vector3().subVectors(obj.end, obj.start).normalize(), 22*dt);
+                    playerRig.position.copy(obj.mesh.position.clone().sub(new THREE.Vector3(0, 3, 0)));
                 }
             });
 
-            // --- NPC AI ---
+            // NPC AI
             npcs.forEach(n => {
-                if(n.userData.health <= 0) { n.rotation.x = Math.PI/2; return; }
-                n.position.x += Math.cos(n.userData.dir) * 1.2 * dt;
-                n.position.z += Math.sin(n.userData.dir) * 1.2 * dt;
-                if(Math.abs(n.position.x) > 60 || Math.abs(n.position.z) > 60) n.userData.dir += Math.PI;
+                if(n.userData.hp <= 0) { n.rotation.x = Math.PI/2; return; }
+                n.position.x += Math.cos(n.userData.dir)*2*dt; n.position.z += Math.sin(n.userData.dir)*2*dt;
+                if(Math.abs(n.position.x) > 100 || Math.abs(n.position.z) > 100) n.userData.dir += Math.PI;
+                physicsObjects.forEach(b => { if(b.type === 'bullet' && b.mesh.position.distanceTo(n.position.clone().add(new THREE.Vector3(0,1.5,0))) < 1) {
+                    n.userData.hp -= 20; n.userData.bar.scale.x = n.userData.hp/100; scene.remove(b.mesh); b.active = false;
+                }});
             });
 
             renderer.render(scene, camera);
